@@ -44,4 +44,7 @@ if __name__ == "__main__":
                                destination_ip_path,
                                subdir_copy_threshold)
 
+    # You can do a test run through this:
+    nameless_path.test_run()
+    # Or run the program directly:
     # nameless_path.run()

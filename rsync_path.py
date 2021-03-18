@@ -204,7 +204,7 @@ class RsyncPath(object):
 
         # des = str(dest_dir)
         # print(f"Destination Directory: {des} ")
-        command = 'du -sLb ' + "\"" + str(source_dir) + "\""
+        command = 'du -sbL ' + "\"" + str(source_dir) + "\""
         # print(f"Command: {command} ")
         # print("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command))
         ssh_result = subprocess.Popen("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command), shell=True, stdout=subprocess.PIPE).communicate()
