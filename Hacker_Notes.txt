@@ -1,0 +1,21 @@
+I want to be able to rsync my music folder, but I want to do this every month or so. However, I want to antiplate having to add additional subdirectories. I also want to prevent a scenerio where my entire music library is removed entirely, so when the program checks to see if the source directory has a file size equal to or more than 80% of the destination subdirectory. If it doesn't make that check, simply abort copying to the destination directory.
+
+I've already implemented this before in my Code_Backup file, so I want to instead make that as a single module that contains a class that implements that.
+
+Since python doesn't have a default constructor, I'll write the psuedocode in C++ :
+
+class Something {
+public:
+	Something() =default;
+	Something(source_ip_array, destination_ip, source_subdirectory_array,
+		  destination_path, copy_threshold_in_percentage		   
+private:
+	// Array of source IP arrays to use
+	// IP of destination IP
+	// Folders to rsync from Source
+	// Path of Destination
+	// Subdirectory copy threshold
+
+
+}
+

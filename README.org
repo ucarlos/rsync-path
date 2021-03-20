@@ -1,0 +1,8 @@
+#+title: Rsync_Path
+#+author: Ulysses Carlos
+#+date: <2021-03-18 Thu>
+
+* Description
+Rsync_Path is a small Python program that acts as a wrapper around rsync , allowing users to select what folders they wish to download from a remote UNIX machine. Rsync_Path provides a threshold limit, preventing a folder that is smaller than the limit from being downloaded.  Currently, Rsync_Path requires that the source computer be a UNIX/Linux machine, but I have plans on creating a device-independent method.
+
+You can run this directly through python3 or install the program through pip3.
