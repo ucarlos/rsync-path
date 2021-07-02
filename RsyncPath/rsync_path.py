@@ -11,6 +11,12 @@ import subprocess
 import os
 import re
 
+# ------------------------------------------------------------------------------
+# A Thin Wrapper around Rsync that handles threshold values. This is to prevent
+# Rsync from wiping an destination path if the source path mysteriously becomes
+# empty due to an OS reinstall, new Hard Drive, etc...
+
+# ------------------------------------------------------------------------------
 
 class RsyncPath(object):
 
@@ -22,10 +28,17 @@ class RsyncPath(object):
     # @param source_directory_list List of paths to the source directories
     # @param destination_user name of the user on the destination computer.
     # @param destination_ip ip of the destination computer.
+    #
+    # @param enable_copy_threshold Determine if a threshold percentage will be used.
+    #                              Without a threshold percentage, the program will run
+    #                              just like rsync.
+    #
     # @param subdir_copy_threshold value that is used to determine if a
     #                              source directory has a size equal to or
     #                              more than a percentage of a destination
     #                              directory (if it exists)
+    #
+    # @param debug_mode Enable Debug Mode for Testing
     def __init__(self,
                  source_user=None,
                  source_ip_list=None,
@@ -34,12 +47,16 @@ class RsyncPath(object):
                  destination_user=None,
                  destination_ip=None,
                  destination_ip_path=None,
-                 subdir_copy_threshold=None):
+                 enable_copy_threshold=True,
+                 subdir_copy_threshold=None,
+                 debug_mode=False):
 
         # Throw exception if threshold is not in range [40, 100]
-        self.subdir_copy_threshold = float(subdir_copy_threshold)
-        if 40.0 > self.subdir_copy_threshold or self.subdir_copy_threshold > 100.0:
-            raise Exception("Error: Invalid Subdirectory copy threshold.")
+
+        if enable_copy_threshold is True:
+            self.subdir_copy_threshold = float(subdir_copy_threshold)
+            if int(self.subdir_copy_threshold) not in range(40, 101):
+                raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of [40, 100]")
 
         self.source_user = source_user
         self.source_ip_list = source_ip_list
@@ -49,6 +66,8 @@ class RsyncPath(object):
         self.destination_user = destination_user
         self.destination_ip = destination_ip
         self.destination_ip_path = destination_ip_path
+        self.enable_copy_threshold = enable_copy_threshold
+        self.debug_mode = debug_mode
 
         if (self.is_invalid_object()):
             raise Exception("Error: Object cannot contain a value of None.")
@@ -57,11 +76,22 @@ class RsyncPath(object):
         """
         Check if the object is valid or not.
         """
-        source = self.source_user is None or self.source_ip_list is None or self.source_directory_list is None or self.destination_user is None or self.source_ip_path is None
+        variable_list = [self.source_user,
+                         self.source_list,
+                         self.source_directory_list,
+                         self.destination_user,
+                         self.source_ip_path,
+                         self.destination_ip,
+                         self.destination_ip_path,
+                         self.subdir_copy_threshold]
 
-        destination = self.destination_ip is None or self.destination_ip_path is None or self.subdir_copy_threshold is None
+        check = False
+        for item in variable_list:
+            if item is None:
+                check = True
+                break
 
-        return source or destination
+        return check
 
     def choose_connection(self):
         for i in range(0, len(self.source_ip_list)):
@@ -69,10 +99,11 @@ class RsyncPath(object):
             if self.ping(self.source_ip_list[i]):
                 print(f"({self.source_ip_list[i]}) is available!")
                 return self.source_ip_list[i]
-            raise RuntimeWarning("Could not establish a connection to any "
-                                 "machine in the IP list. Please check your "
-                                 "internet connection and make sure the "
-                                 "other computers are online.")
+
+        raise RuntimeWarning("Could not establish a connection to any "
+                             "machine in the IP list. Please check your "
+                             "internet connection and make sure the "
+                             "other computers are online.")
 
     def ping(self, ip_address):
         """
@@ -100,7 +131,8 @@ class RsyncPath(object):
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
         return float(result)
 
-    def rsync_directories(self):
+    
+    def rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """
         Copy source directories to a destination path.
         """
@@ -109,18 +141,27 @@ class RsyncPath(object):
         self.destination_ip_path.mkdir(exist_ok=True)
 
         for path in self.source_directory_list:
-            # print(f"Source IP Path: {self.source_ip_path} ")
+
+            if DEBUG_MODE:
+                print(f"Source IP Path: {self.source_ip_path} ")
             source_path = self.source_ip_path / path 
             escaped_path = str(source_path).replace(" ", "\\ ")
-            # print(f"Escaped Path: {escaped_path}\n")
+
+            if DEBUG_MODE:
+                print(f"Escaped Path: {escaped_path}\n")
             dest_path = Path(self.destination_ip_path / path)
 
             rsync_command = "rsync -aLvz --delete " + str(self.source_ip) + ":\"" + \
                 escaped_path + "\" \"" + str(self.destination_ip_path) + "/\""
-            # print(f"Rsync command: {rsync_command}")
-            # Copy automatically if destination path does not exist.
-            if (not dest_path.exists()):
-                os.system(rsync_command)
+
+            if DEBUG_MODE:
+                print(f"Rsync command: {rsync_command}")
+
+
+            # Copy automatically if destination path does not exist or Copy threshold is Disabled.
+            if (not dest_path.exists()) or not self.enable_copy_threshold:
+                if not TEST_RUN:
+                    os.system(rsync_command)
             else:
                 # Compare source and destination directories
                 check, backup_size, temp_size = self.verify_directory(escaped_path, dest_path)
@@ -141,7 +182,8 @@ class RsyncPath(object):
                           + str(mb_backup_size)
                           + "M (Source Size is "
                           + str(mb_temp_size) + "M)")
-                    os.system(rsync_command)
+                    if not TEST_RUN:
+                        os.system(rsync_command)
 
     def run(self):
         self.source_ip = self.choose_connection()
@@ -152,40 +194,7 @@ class RsyncPath(object):
         Test each source directory with the destination directory,
         comparing the size. This DOES NOT copy the directory.
         """
-        self.source_ip = self.choose_connection()
-        # Make sure that destination path exists.
-        # self.destination_ip_path.mkdir(exist_ok=True)
-
-        for path in self.source_directory_list:
-            # print(f"Source IP Path: {self.source_ip_path} ")
-            source_path = self.source_ip_path / path 
-            escaped_path = str(source_path).replace(" ", "\\ ")
-            # print(f"Escaped Path: {escaped_path}\n")
-            dest_path = Path(self.destination_ip_path / path)
-
-            # Copy automatically if destination path does not exist.
-            if (not dest_path.exists()):
-                print(f"{str(dest_path)} does not exist on the destination computer.")
-            else:
-                # Compare source and destination directories
-                check, backup_size, temp_size = self.verify_directory(escaped_path, dest_path)
-                mb_temp_size = round((temp_size / (1 << 20)), 3)
-                mb_backup_size = round((backup_size / (1 << 20)), 3)
-                if not check:
-                    print("Warning: Cannot move "
-                          + str(path)
-                          + " to "
-                          + str(dest_path)
-                          + " Since it is not at least "
-                          + str(mb_backup_size)
-                          + "M (Source Size is "
-                          + str(mb_temp_size) + "M)")
-                else:
-                    print(str(path)
-                          + " is at least "
-                          + str(mb_backup_size)
-                          + "M (Source Size is "
-                          + str(mb_temp_size) + "M)")
+        self.rsync_directories(self.enable_copy_threshold, True)
 
     def verify_directory(self, source_dir, dest_dir):
         """
