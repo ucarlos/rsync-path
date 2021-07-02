@@ -164,7 +164,7 @@ class RsyncPath(object):
                     os.system(rsync_command)
             else:
                 # Compare source and destination directories
-                check, backup_size, temp_size = self.verify_directory(escaped_path, dest_path)
+                check, backup_size, temp_size = self.verify_directory(escaped_path, dest_path, self.debug_mode)
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
@@ -197,7 +197,7 @@ class RsyncPath(object):
         self.source_ip = self.choose_connection()
         self.rsync_directories(self.debug_mode, True)
 
-    def verify_directory(self, source_dir, dest_dir):
+    def verify_directory(self, source_dir, dest_dir, DEBUG_MODE=False):
         """
         Determine if the contents of the temp directory is empty or smaller
         than the threshold defined in subdir_copy_threshold.
@@ -205,20 +205,28 @@ class RsyncPath(object):
 
         threshold = self.subdir_copy_threshold / 100
         backup_size = threshold * self.get_directory_size(dest_dir)
-        # print(f"Backup Size: {backup_size} bytes")
+
+        if DEBUG_MODE:
+            print(f"Backup Size: {backup_size} bytes")
         # The threshold is compared through a subprocess:
         user = self.source_user
         host = self.source_ip
-        # test = str(source_dir)
-        # print(f"Source Directory: {test} ")
 
-        # des = str(dest_dir)
-        # print(f"Destination Directory: {des} ")
+        if DEBUG_MODE:
+            test = str(source_dir)
+            print(f"Source Directory: {test} ")
+            des = str(dest_dir)
+            print(f"Destination Directory: {des} ")
+
         command = 'du -sbL ' + "\"" + str(source_dir) + "\""
-        # print(f"Command: {command} ")
-        # print("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command))
+        if DEBUG_MODE:
+            print(f"Command: {command} ")
+            print("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command))
+
         ssh_result = subprocess.Popen("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command), shell=True, stdout=subprocess.PIPE).communicate()
         temp_size = re.sub("[^0-9]", "", ssh_result[0].decode('utf-8'))
-        # temp_size = 0
-        # print(f"Temp Size: {temp_size} ")
+
+        if DEBUG_MODE:
+            print(f"Temp Size: {temp_size} ")
+
         return (float(temp_size) >= backup_size), backup_size, float(temp_size)
