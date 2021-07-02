@@ -18,6 +18,7 @@ import re
 
 # ------------------------------------------------------------------------------
 
+
 class RsyncPath(object):
 
     # Constructor
@@ -77,10 +78,10 @@ class RsyncPath(object):
         Check if the object is valid or not.
         """
         variable_list = [self.source_user,
-                         self.source_list,
+                         self.source_ip_list,
+                         self.source_ip_path,
                          self.source_directory_list,
                          self.destination_user,
-                         self.source_ip_path,
                          self.destination_ip,
                          self.destination_ip_path,
                          self.subdir_copy_threshold]
@@ -131,7 +132,6 @@ class RsyncPath(object):
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
         return float(result)
 
-    
     def rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """
         Copy source directories to a destination path.
@@ -194,7 +194,8 @@ class RsyncPath(object):
         Test each source directory with the destination directory,
         comparing the size. This DOES NOT copy the directory.
         """
-        self.rsync_directories(self.enable_copy_threshold, True)
+        self.source_ip = self.choose_connection()
+        self.rsync_directories(self.debug_mode, True)
 
     def verify_directory(self, source_dir, dest_dir):
         """
