@@ -16,7 +16,8 @@ if __name__ == "__main__":
     destination_ip = "DEST_IP"
     destination_ip_path = Path.home() / "Downloads"
     subdir_copy_threshold = 85.0
-
+    enable_copy_threshold = True
+    DEBUG_MODE = True
     # print("Source user: " + str(source_user))
     # print("Source ip list:")
     # for item in source_ip_list:
@@ -40,7 +41,9 @@ if __name__ == "__main__":
                                destination_user,
                                destination_ip,
                                destination_ip_path,
-                               subdir_copy_threshold)
+                               enable_copy_threshold,
+                               subdir_copy_threshold,
+                               DEBUG_MODE)
 
     # You can do a test run through this:
     nameless_path.test_run()
