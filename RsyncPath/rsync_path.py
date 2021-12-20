@@ -11,15 +11,15 @@ import subprocess
 import os
 import re
 
-# ------------------------------------------------------------------------------
-# A Thin Wrapper around Rsync that handles threshold values. This is to prevent
-# Rsync from wiping an destination path if the source path mysteriously becomes
-# empty due to an OS reinstall, new Hard Drive, etc...
-
-# ------------------------------------------------------------------------------
-
 
 class RsyncPath(object):
+    """
+    A Thin Wrapper around Rsync that handles threshold values.
+
+    This is to prevent Rsync from wiping an destination path if the source
+    path  mysteriously becomes empty due to an OS reinstall, new Hard Drive,
+    etc...
+    """
 
     # Constructor
     # @param self pointer to current object
@@ -86,13 +86,11 @@ class RsyncPath(object):
                          self.destination_ip_path,
                          self.subdir_copy_threshold]
 
-        check = False
         for item in variable_list:
             if item is None:
-                check = True
-                break
+                return True
 
-        return check
+        return False
 
     def choose_connection(self):
         for i in range(0, len(self.source_ip_list)):
@@ -144,21 +142,21 @@ class RsyncPath(object):
 
             if DEBUG_MODE:
                 print(f"Source IP Path: {self.source_ip_path} ")
-            source_path = self.source_ip_path / path 
+            source_path = self.source_ip_path / path
             escaped_path = str(source_path).replace(" ", "\\ ")
 
             if DEBUG_MODE:
                 print(f"Escaped Path: {escaped_path}\n")
             dest_path = Path(self.destination_ip_path / path)
 
-            rsync_command = "rsync -aLvz --delete " + str(self.source_ip) + ":\"" + \
-                escaped_path + "\" \"" + str(self.destination_ip_path) + "/\""
+
+            rsync_command = f"rsync -aLvz --delete {str(self.source_user)}@{str(self.source_ip)}:\"{escaped_path}\" \"{str(self.destination_ip_path)}/\""
 
             if DEBUG_MODE:
                 print(f"Rsync command: {rsync_command}")
 
-
-            # Copy automatically if destination path does not exist or Copy threshold is Disabled.
+            # Copy automatically if destination path does not exist
+            # or Copy threshold is Disabled.
             if (not dest_path.exists()) or not self.enable_copy_threshold:
                 if not TEST_RUN:
                     os.system(rsync_command)
@@ -223,7 +221,9 @@ class RsyncPath(object):
             print(f"Command: {command} ")
             print("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command))
 
-        ssh_result = subprocess.Popen("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command), shell=True, stdout=subprocess.PIPE).communicate()
+        ssh_result = subprocess.Popen("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command),
+                                      shell=True, stdout=subprocess.PIPE).communicate()
+
         temp_size = re.sub("[^0-9]", "", ssh_result[0].decode('utf-8'))
 
         if DEBUG_MODE:
