@@ -5,7 +5,7 @@
 #
 # -----------------------------------------------------------------------------
 from pathlib import Path
-from rsync_path import RsyncPath as rsync_path
+from RsyncPath.RsyncPath import RsyncPath
 
 if __name__ == "__main__":
     source_user = "USERNAME"
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # print("Copy Threshold: " + str(subdir_copy_threshold))
 
     # print("Now creating the object!")
-    nameless_path = rsync_path(source_user,
+    nameless_path = RsyncPath(source_user,
                                source_ip_list,
                                source_ip_path,
                                source_directory_list,
@@ -46,6 +46,6 @@ if __name__ == "__main__":
                                DEBUG_MODE)
 
     # You can do a test run through this:
-    nameless_path.test_run()
+    nameless_path.dry_run()
     # Or run the program directly:
     # nameless_path.run()

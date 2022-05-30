@@ -6,10 +6,11 @@
 # ip address to destination ip with a specified path.
 # ------------------------------------------------------------------------------
 from pathlib import Path
+import logging
 import platform
 import subprocess
-import os
-import re
+from shlex import split
+from re import sub
 
 
 class RsyncPath(object):
@@ -69,6 +70,12 @@ class RsyncPath(object):
         self.destination_ip_path = destination_ip_path
         self.enable_copy_threshold = enable_copy_threshold
         self.debug_mode = debug_mode
+        if self.debug_mode:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.info("Note: Logging has been disabled.")
+
+        self.delimiter = "æ̃"
 
         if (self.is_invalid_object()):
             raise Exception("Error: Object cannot contain a value of None.")
@@ -93,6 +100,7 @@ class RsyncPath(object):
         return False
 
     def choose_connection(self):
+        logging.debug("self.choose_connection(): Searching for an available host.")
         for i in range(0, len(self.source_ip_list)):
             print(f"Checking if host {i} ({self.source_ip_list[i]}) is available...")
             if self.ping(self.source_ip_list[i]):
@@ -126,8 +134,10 @@ class RsyncPath(object):
         Determine the size of a directory in bytes.
         The size is exactly the same as the size reported by 'du -sb' in Linux.
         """
+        logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
         directory = directory_path
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
+        logging.debug(f"self.get_directory_size(): Size of {str(directory_path)} is {float(result)}")
         return float(result)
 
     def rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
@@ -135,63 +145,51 @@ class RsyncPath(object):
         Copy source directories to a destination path.
         """
 
+        logging.info("self.rsync_directories(): Starting Rsync.")
+
         # Make sure that destination path exists.
         self.destination_ip_path.mkdir(exist_ok=True)
 
         for path in self.source_directory_list:
-
-            if DEBUG_MODE:
-                print(f"Source IP Path: {self.source_ip_path} ")
             source_path = self.source_ip_path / path
-            escaped_path = str(source_path).replace(" ", "\\ ")
 
-            if DEBUG_MODE:
-                print(f"Escaped Path: {escaped_path}\n")
             dest_path = Path(self.destination_ip_path / path)
 
-
-            rsync_command = f"rsync -aLvz --delete {str(self.source_user)}@{str(self.source_ip)}:\"{escaped_path}\" \"{str(self.destination_ip_path)}/\""
-
-            if DEBUG_MODE:
-                print(f"Rsync command: {rsync_command}")
+            rsync_command = f"rsync -aLvz --delete  {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
             if (not dest_path.exists()) or not self.enable_copy_threshold:
+                replaced_command = rsync_command.replace(self.delimiter, " ")
+                logging.debug(f"self.rsync_directories(): Preparing to call {replaced_command}")
                 if not TEST_RUN:
-                    os.system(rsync_command)
+                    subprocess.run(rsync_command.split(self.delimiter))
             else:
                 # Compare source and destination directories
-                check, backup_size, temp_size = self.verify_directory(escaped_path, dest_path, self.debug_mode)
+                check, backup_size, temp_size = self.verify_directory(source_path, dest_path, self.debug_mode)
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
-                    print("Warning: Cannot move "
-                          + str(path)
-                          + " to "
-                          + str(dest_path)
-                          + " Since it is not at least "
-                          + str(mb_backup_size)
-                          + "M (Source Size is "
-                          + str(mb_temp_size) + "M)")
+                    print(
+                        f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
-                    print(str(path)
-                          + " is at least "
-                          + str(mb_backup_size)
-                          + "M (Source Size is "
-                          + str(mb_temp_size) + "M)")
+                    print(f"{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M) ")
+                    logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
+                    logging.debug(f"Split command: {split(rsync_command)}")
                     if not TEST_RUN:
-                        os.system(rsync_command)
+                        subprocess.run(split(rsync_command))
+
+        logging.info("self.rsync_directories(): Finished function call.")
 
     def run(self):
         self.source_ip = self.choose_connection()
         self.rsync_directories()
 
-    def test_run(self):
+    def dry_run(self):
         """
         Test each source directory with the destination directory,
         comparing the size. This DOES NOT copy the directory.
-        """
+         """
         self.source_ip = self.choose_connection()
         self.rsync_directories(self.debug_mode, True)
 
@@ -201,32 +199,30 @@ class RsyncPath(object):
         than the threshold defined in subdir_copy_threshold.
         """
 
+        logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold = self.subdir_copy_threshold / 100
         backup_size = threshold * self.get_directory_size(dest_dir)
 
-        if DEBUG_MODE:
-            print(f"Backup Size: {backup_size} bytes")
         # The threshold is compared through a subprocess:
         user = self.source_user
         host = self.source_ip
 
         if DEBUG_MODE:
-            test = str(source_dir)
-            print(f"Source Directory: {test} ")
-            des = str(dest_dir)
-            print(f"Destination Directory: {des} ")
+            logging.debug(f"self.verify_directory(): Backup Size: {backup_size} bytes")
+            logging.debug(
+                f"self.verify_directory(): Source Directory: {str(source_dir)} \tDestination Directory : {str(dest_dir)}")
 
-        command = 'du -sbL ' + "\"" + str(source_dir) + "\""
+        ssh_command = f"ssh{self.delimiter}{user}@{host}{self.delimiter}du{self.delimiter}-sbL{self.delimiter}'{str(source_dir)}'"
+        logging.debug(f"Command: {ssh_command}")
         if DEBUG_MODE:
-            print(f"Command: {command} ")
-            print("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command))
+            replaced_ssh_command = ssh_command.replace(self.delimiter, " ")
+            logging.debug(f"self.verify_directory(): Preparing to call {replaced_ssh_command}")
 
-        ssh_result = subprocess.Popen("ssh {user}@{host} {cmd}".format(user=user, host=host, cmd=command),
-                                      shell=True, stdout=subprocess.PIPE).communicate()
-
-        temp_size = re.sub("[^0-9]", "", ssh_result[0].decode('utf-8'))
+        logging.debug(f"Command Split: {ssh_command.split(self.delimiter)}")
+        ssh_result = subprocess.Popen(ssh_command.split(self.delimiter), stdout=subprocess.PIPE).communicate()
+        temp_size = sub(r"[^\d]", "", ssh_result[0].decode('utf-8'))
 
         if DEBUG_MODE:
-            print(f"Temp Size: {temp_size} ")
+            logging.debug(f"self.verify_directory(): Destination Directory Size is {temp_size}")
 
         return (float(temp_size) >= backup_size), backup_size, float(temp_size)
