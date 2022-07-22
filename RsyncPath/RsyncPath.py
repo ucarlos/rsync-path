@@ -75,15 +75,11 @@ class RsyncPath(object):
         else:
             logging.info("Note: Logging has been disabled.")
 
-        self.delimiter = "æ̃"
-
         if (self.is_invalid_object()):
             raise Exception("Error: Object cannot contain a value of None.")
 
     def is_invalid_object(self):
-        """
-        Check if the object is valid or not.
-        """
+        """Check if the object is valid or not."""
         variable_list = [self.source_user,
                          self.source_ip_list,
                          self.source_ip_path,
@@ -155,23 +151,21 @@ class RsyncPath(object):
 
             dest_path = Path(self.destination_ip_path / path)
 
-            rsync_command = f"rsync -aLvz --delete  {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
+            rsync_command = f"rsync -aLvz --delete  --safe-links {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
             if (not dest_path.exists()) or not self.enable_copy_threshold:
-                replaced_command = rsync_command.replace(self.delimiter, " ")
-                logging.debug(f"self.rsync_directories(): Preparing to call {replaced_command}")
+                logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
                 if not TEST_RUN:
-                    subprocess.run(rsync_command.split(self.delimiter))
+                    subprocess.run(split(rsync_command))
             else:
                 # Compare source and destination directories
                 check, backup_size, temp_size = self.verify_directory(source_path, dest_path, self.debug_mode)
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
-                    print(
-                        f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
+                    print(f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
                     print(f"{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M) ")
                     logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
@@ -212,14 +206,13 @@ class RsyncPath(object):
             logging.debug(
                 f"self.verify_directory(): Source Directory: {str(source_dir)} \tDestination Directory : {str(dest_dir)}")
 
-        ssh_command = f"ssh{self.delimiter}{user}@{host}{self.delimiter}du{self.delimiter}-sbL{self.delimiter}'{str(source_dir)}'"
+        ssh_command = f"ssh {user}@{host} du -sbL '{str(source_dir)}'"
         logging.debug(f"Command: {ssh_command}")
         if DEBUG_MODE:
-            replaced_ssh_command = ssh_command.replace(self.delimiter, " ")
-            logging.debug(f"self.verify_directory(): Preparing to call {replaced_ssh_command}")
+            logging.debug(f"self.verify_directory(): Preparing to call {ssh_command}")
 
-        logging.debug(f"Command Split: {ssh_command.split(self.delimiter)}")
-        ssh_result = subprocess.Popen(ssh_command.split(self.delimiter), stdout=subprocess.PIPE).communicate()
+        logging.debug(f"Command Split: {split(ssh_command)}")
+        ssh_result = subprocess.Popen(split(ssh_command), stdout=subprocess.PIPE).communicate()
         temp_size = sub(r"[^\d]", "", ssh_result[0].decode('utf-8'))
 
         if DEBUG_MODE:
