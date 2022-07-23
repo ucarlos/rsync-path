@@ -206,7 +206,7 @@ class RsyncPath(object):
             logging.debug(
                 f"self.verify_directory(): Source Directory: {str(source_dir)} \tDestination Directory : {str(dest_dir)}")
 
-        ssh_command = f"ssh {user}@{host} du -sbL '{str(source_dir)}'"
+        ssh_command = f"ssh {user}@{host} \"du -sbL '{str(source_dir)}'\""
         logging.debug(f"Command: {ssh_command}")
         if DEBUG_MODE:
             logging.debug(f"self.verify_directory(): Preparing to call {ssh_command}")
