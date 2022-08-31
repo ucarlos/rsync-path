@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Created by Ulysses Carlos on 12/28/2020 at 03:46 PM
 #
-# Something.py
+# RsyncPath.py
 # A Python module that can handle rsync a group of directories from a source
 # ip address to destination ip with a specified path.
 # ------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ class RsyncPath(object):
 
             dest_path = Path(self.destination_ip_path / path)
 
-            rsync_command = f"rsync -aLvz --delete  --safe-links {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
+            rsync_command = f"rsync -aLvzh --delete  --safe-links {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
