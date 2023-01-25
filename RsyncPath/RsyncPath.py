@@ -130,6 +130,7 @@ class RsyncPath(object):
         Determine the size of a directory in bytes.
         The size is exactly the same as the size reported by 'du -sb' in Linux.
         """
+
         logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
         directory = directory_path
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
@@ -137,12 +138,10 @@ class RsyncPath(object):
         return float(result)
 
     def rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
-        """
-        Copy source directories to a destination path.
-        """
-
+        """Copy source directories to a destination path."""
         logging.info("self.rsync_directories(): Starting Rsync.")
 
+        dry_run_string = "--dry-run" if DEBUG_MODE else ""
         # Make sure that destination path exists.
         self.destination_ip_path.mkdir(exist_ok=True)
 
@@ -151,7 +150,7 @@ class RsyncPath(object):
 
             dest_path = Path(self.destination_ip_path / path)
 
-            rsync_command = f"rsync -aLvzh --delete  --safe-links {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
+            rsync_command = f"rsync -aLvzh --delete  {dry_run_string} --safe-links {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
@@ -176,6 +175,7 @@ class RsyncPath(object):
         logging.info("self.rsync_directories(): Finished function call.")
 
     def run(self):
+        """Select a available connection and copies over specified source directories to the destination directory."""
         self.source_ip = self.choose_connection()
         self.rsync_directories()
 
@@ -192,6 +192,8 @@ class RsyncPath(object):
         Determine if the contents of the temp directory is empty or smaller
         than the threshold defined in subdir_copy_threshold.
         """
+
+
 
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold = self.subdir_copy_threshold / 100
