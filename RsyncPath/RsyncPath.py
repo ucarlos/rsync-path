@@ -22,25 +22,6 @@ class RsyncPath(object):
     etc...
     """
 
-    # Constructor
-    # @param self pointer to current object
-    # @param source_user Name of the user on the source computer.
-    # @param source_ip_list List of ip addresses that the source can use.
-    # @param source_ip_path root directory used by the source computer.
-    # @param source_directory_list List of paths to the source directories
-    # @param destination_user name of the user on the destination computer.
-    # @param destination_ip ip of the destination computer.
-    #
-    # @param enable_copy_threshold Determine if a threshold percentage will be used.
-    #                              Without a threshold percentage, the program will run
-    #                              just like rsync.
-    #
-    # @param subdir_copy_threshold value that is used to determine if a
-    #                              source directory has a size equal to or
-    #                              more than a percentage of a destination
-    #                              directory (if it exists)
-    #
-    # @param debug_mode Enable Debug Mode for Testing
     def __init__(self,
                  source_user=None,
                  source_ip_list=None,
@@ -52,7 +33,29 @@ class RsyncPath(object):
                  enable_copy_threshold=True,
                  subdir_copy_threshold=None,
                  debug_mode=False):
+        """
+        Construct the object.
 
+        :param self pointer to current object
+        :param source_user Name of the user on the source computer.
+        :param source_ip_list List of ip addresses that the source can use.
+        :param source_ip_path root directory used by the source computer.
+        :param source_directory_list List of paths to the source directories
+        :param destination_user name of the user on the destination computer.
+        :param destination_ip ip of the destination computer.
+
+        :param enable_copy_threshold Determine if a threshold percentage will be used.
+                                 Without a threshold percentage, the program will run
+                                 just like rsync.
+
+        :param subdir_copy_threshold value that is used to determine if a
+                                 source directory has a size equal to or
+                                 more than a percentage of a destination
+                                 directory (if it exists)
+
+        :param debug_mode Enable Debug Mode for Testing
+
+        """
         # Throw exception if threshold is not in range [40, 100]
 
         if enable_copy_threshold is True:
@@ -96,6 +99,7 @@ class RsyncPath(object):
         return False
 
     def choose_connection(self):
+        """Select a connection to use from the specified list."""
         logging.debug("self.choose_connection(): Searching for an available host.")
         for i in range(0, len(self.source_ip_list)):
             print(f"Checking if host {i} ({self.source_ip_list[i]}) is available...")
@@ -110,11 +114,11 @@ class RsyncPath(object):
 
     def ping(self, ip_address):
         """
-        Returns True if host (str) responds to a ping request.
+        Return True if host (str) responds to a ping request.
+
         Remember that a host may not respond to a ping (ICMP) request
         even if the host name is valid.
         """
-
         # Option for the number of packets as a function of
         os_name = platform.system().lower()
 
@@ -126,11 +130,7 @@ class RsyncPath(object):
         return subprocess.call(command, stdout=subprocess.DEVNULL) == 0
 
     def get_directory_size(self, directory_path):
-        """
-        Determine the size of a directory in bytes.
-        The size is exactly the same as the size reported by 'du -sb' in Linux.
-        """
-
+        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb' in Linux."""
         logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
         directory = directory_path
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
@@ -143,14 +143,21 @@ class RsyncPath(object):
 
         dry_run_string = "--dry-run" if DEBUG_MODE else ""
         # Make sure that destination path exists.
-        self.destination_ip_path.mkdir(exist_ok=True)
+        # TODO: Replace this behavior in an SSH Client.
+        # self.destination_ip_path.mkdir(exist_ok=True)
 
         for path in self.source_directory_list:
             source_path = self.source_ip_path / path
 
+            # I now realize that this doesn't work the way I think it does.
+            # In fact, this doesn't even work since you can't check it using dest_path though SSH.
+            # TODO: Create an SSH Client that does this confirmation and size check so that this can work with
+            # both Windows and Linux/Posix.
             dest_path = Path(self.destination_ip_path / path)
 
-            rsync_command = f"rsync -aLvzh --delete  {dry_run_string} --safe-links {str(self.source_user)}@{str(self.source_ip)}:\"'{source_path}'\" \"{str(self.destination_ip_path)}/\""
+            full_source_path = f"\"{source_path}\""
+            full_destination_path = f"{str(self.destination_user)}@{str(self.destination_ip)}:\"{str(self.destination_ip_path)}\""
+            rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_destination_path}"
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
@@ -180,21 +187,12 @@ class RsyncPath(object):
         self.rsync_directories()
 
     def dry_run(self):
-        """
-        Test each source directory with the destination directory,
-        comparing the size. This DOES NOT copy the directory.
-         """
+        """Test each source directory with the destination directory, comparing the size. This DOES NOT copy the directory."""
         self.source_ip = self.choose_connection()
         self.rsync_directories(self.debug_mode, True)
 
     def verify_directory(self, source_dir, dest_dir, DEBUG_MODE=False):
-        """
-        Determine if the contents of the temp directory is empty or smaller
-        than the threshold defined in subdir_copy_threshold.
-        """
-
-
-
+        """Determine if the contents of the temp directory is empty or smaller than the threshold defined in subdir_copy_threshold."""
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold = self.subdir_copy_threshold / 100
         backup_size = threshold * self.get_directory_size(dest_dir)
