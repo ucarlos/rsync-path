@@ -7,6 +7,7 @@
 from pathlib import Path
 from RsyncPath.RsyncPath import RsyncPath
 import argparse
+import logging
 
 
 def run_rsync_path(argument_dict):
@@ -23,22 +24,17 @@ def run_rsync_path(argument_dict):
 
     DEBUG_MODE = argument_dict['debug_mode']
 
-    # print("Source user: " + str(source_user))
-    # print("Source ip list:")
-    # for item in source_ip_list:
-    #     print(item)
-    # print("")
-    # print("Source ip path: " + str(source_ip_path))
-    # print("Source Directory List:")
-    # for item in source_directory_list:
-    #     print(str(item))
-    # print("")
-    # print("Destination User: " + str(destination_user))
-    # print("Destination IP: " + str(destination_ip))
-    # print("Destination IP Path: " + str(destination_ip_path))
-    # print("Copy Threshold: " + str(subdir_copy_threshold))
+    logging.debug("Example_Path.run_rsync_path():")
+    logging.debug(f"Source user: {str(source_user)}")
+    logging.debug("Source IP List: " + "\n".join(source_ip_list))
+    logging.debug(f"Source IP Path: {str(source_ip_path)}")
+    logging.debug("Source Directory List: " + "\n".join(source_directory_list))
 
-    # print("Now creating the object!")
+    logging.debug(f"\nDestination User: {str(destination_user)}")
+    logging.debug(f"Destination IP: {str(destination_ip)}")
+    logging.debug(f"Destination IP Path: {str(destination_ip_path)}")
+    logging.debug(f"Copy Threshold: {str(subdir_copy_threshold)}")
+
     nameless_path = RsyncPath(source_user,
                               source_ip_list,
                               source_ip_path,
@@ -50,14 +46,10 @@ def run_rsync_path(argument_dict):
                               subdir_copy_threshold,
                               DEBUG_MODE)
 
-    # You can do a test run through this:
-
     if argument_dict['dry_run']:
         nameless_path.dry_run()
     else:
         nameless_path.run()
-
-    # Or run the program directly:
 
 
 # Now run the damn thing.
@@ -68,5 +60,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     argument_dict = {'dry_run': args.dry_run, 'debug_mode': args.debug_mode}
-    print(f"{argument_dict}")
+
+    if argument_dict['debug_mode']:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
     run_rsync_path(argument_dict)
