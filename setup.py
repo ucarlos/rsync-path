@@ -21,7 +21,6 @@ config = {
     "packages": ['RsyncPath'],
     "scripts": [],
     "name": "rsync_path"
-    # test
 }
 
 
