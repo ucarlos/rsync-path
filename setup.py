@@ -15,7 +15,8 @@ config = {"description": "A Python application which wraps around rsync to enabl
           "url": "N/A",
           "download_url": "https://github.com/ucarlos/Romanjize",
           "author_email": "ulysses_carlos@protonmail.com",
-          "version": "0.15",
+          "version": "1.0.0",
+          "install_requires": ['fabric, invoke'],
           "packages": ['RsyncPath'],
           "scripts": [],
           "name": "rsync_path"}

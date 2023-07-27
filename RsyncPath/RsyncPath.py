@@ -16,8 +16,7 @@ from re import sub
 # from SSHClient import SSHClient, OS_TYPE
 # TODO: replace the source and destination variables with source and destination maps.
 class RsyncPath(object):
-    """
-    A Thin Wrapper around Rsync that handles threshold values.
+    """A Thin Wrapper around Rsync that handles threshold values.
 
     This is to prevent Rsync from wiping an destination path if the source
     path  mysteriously becomes empty due to an OS reinstall, new Hard Drive,
@@ -30,8 +29,7 @@ class RsyncPath(object):
                  enable_copy_threshold=True,
                  subdir_copy_threshold=None,
                  debug_mode=False):
-        """
-        Construct the object.
+        """Construct the object.
 
         :param self pointer to current object
         :param source_user Name of the user on the source computer.
@@ -113,8 +111,7 @@ class RsyncPath(object):
                              "other computers are online.")
 
     def ping(self, ip_address):
-        """
-        Return True if host (str) responds to a ping request.
+        """Return True if host (str) responds to a ping request.
 
         Remember that a host may not respond to a ping (ICMP) request
         even if the host name is valid.
@@ -130,8 +127,7 @@ class RsyncPath(object):
         return subprocess.call(command, stdout=subprocess.DEVNULL) == 0
 
     def get_directory_size(self, directory_path):
-        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb'
-        in Linux."""
+        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb' in Linux."""
         logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
         directory = directory_path
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
@@ -190,13 +186,15 @@ class RsyncPath(object):
 
     def dry_run(self):
         """Test each source directory with the destination directory, comparing the size. This DOES NOT copy the
-        directory."""
+        directory.
+        """
         self.source_ip = self.choose_connection()
         self.rsync_directories(self.debug_mode, True)
 
     def verify_directory(self, source_dir, dest_dir, DEBUG_MODE=False):
         """Determine if the contents of the temp directory is empty or smaller than the threshold defined in
-        subdir_copy_threshold."""
+        subdir_copy_threshold.
+        """
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold = self.subdir_copy_threshold / 100
         backup_size = threshold * self.get_directory_size(dest_dir)
