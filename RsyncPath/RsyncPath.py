@@ -13,8 +13,6 @@ from shlex import split
 from re import sub
 
 
-# from SSHClient import SSHClient, OS_TYPE
-# TODO: replace the source and destination variables with source and destination maps.
 class RsyncPath(object):
     """
     A Thin Wrapper around Rsync that handles threshold values.
@@ -25,8 +23,13 @@ class RsyncPath(object):
     """
 
     def __init__(self,
-                 source_dict: dict[str, object] = None,
-                 destination_dict: dict[str, object] = None,
+                 source_user=None,
+                 source_ip_list=None,
+                 source_ip_path=None,
+                 source_directory_list=None,
+                 destination_user=None,
+                 destination_ip=None,
+                 destination_ip_path=None,
                  enable_copy_threshold=True,
                  subdir_copy_threshold=None,
                  debug_mode=False):
@@ -60,25 +63,22 @@ class RsyncPath(object):
             if int(self.subdir_copy_threshold) not in range(40, 101):
                 raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of [40, 100]")
 
-        self.source_dict = source_dict
-        self.source_user = self.source_dict['source_user']
-        self.source_ip_list = self.source_dict['source_ip_list']
-        self.source_ip_path = self.source_dict['source_ip_path']
-        self.source_directory_list = self.source_dict['source_directory_list']
+        self.source_user = source_user
+        self.source_ip_list = source_ip_list
+        self.source_ip_path = source_ip_path
+        self.source_directory_list = source_directory_list
 
-        self.destination_dict = destination_dict
-        self.destination_user = self.destination_dict['destination_user']
-        self.destination_ip = self.destination_dict['destination_ip']
-        self.destination_ip_path = self.destination_dict['destination_ip_path']
-        self.enable_copy_threshold = self.destination_dict['enable_copy_threshold']
-
+        self.destination_user = destination_user
+        self.destination_ip = destination_ip
+        self.destination_ip_path = destination_ip_path
+        self.enable_copy_threshold = enable_copy_threshold
         self.debug_mode = debug_mode
         if self.debug_mode:
             logging.basicConfig(level=logging.DEBUG)
         else:
             logging.info("Note: Logging has been disabled.")
 
-        if self.is_invalid_object():
+        if (self.is_invalid_object()):
             raise Exception("Error: Object cannot contain a value of None.")
 
     def is_invalid_object(self):
@@ -130,8 +130,7 @@ class RsyncPath(object):
         return subprocess.call(command, stdout=subprocess.DEVNULL) == 0
 
     def get_directory_size(self, directory_path):
-        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb'
-        in Linux."""
+        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb' in Linux."""
         logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
         directory = directory_path
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
@@ -172,8 +171,7 @@ class RsyncPath(object):
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
-                    print(
-                        f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
+                    print(f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
                     print(f"{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M) ")
                     logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
@@ -189,14 +187,12 @@ class RsyncPath(object):
         self.rsync_directories()
 
     def dry_run(self):
-        """Test each source directory with the destination directory, comparing the size. This DOES NOT copy the
-        directory."""
+        """Test each source directory with the destination directory, comparing the size. This DOES NOT copy the directory."""
         self.source_ip = self.choose_connection()
         self.rsync_directories(self.debug_mode, True)
 
     def verify_directory(self, source_dir, dest_dir, DEBUG_MODE=False):
-        """Determine if the contents of the temp directory is empty or smaller than the threshold defined in
-        subdir_copy_threshold."""
+        """Determine if the contents of the temp directory is empty or smaller than the threshold defined in subdir_copy_threshold."""
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold = self.subdir_copy_threshold / 100
         backup_size = threshold * self.get_directory_size(dest_dir)
