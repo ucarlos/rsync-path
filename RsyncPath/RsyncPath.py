@@ -11,10 +11,12 @@ import platform
 import subprocess
 from shlex import split
 from re import sub
-
+# from Client import Client
 
 # from SSHClient import SSHClient, OS_TYPE
 # TODO: replace the source and destination variables with source and destination maps.
+
+
 class RsyncPath(object):
     """A Thin Wrapper around Rsync that handles threshold values.
 
