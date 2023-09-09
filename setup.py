@@ -17,7 +17,7 @@ config = {
     "download_url": "https://github.com/ucarlos/rsync-path",
     "author_email": "ulysses_carlos@protonmail.com",
     "version": "1.0.0",
-    "install_requires": ['fabric'],
+    "install_requires": ['fabric', 'invoke'],
     "packages": ['RsyncPath'],
     "scripts": [],
     "name": "rsync_path"

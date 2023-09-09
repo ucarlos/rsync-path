@@ -18,37 +18,33 @@ from re import sub
 class RsyncPath(object):
     """A Thin Wrapper around Rsync that handles threshold values.
 
-    This is to prevent Rsync from wiping an destination path if the source
-    path  mysteriously becomes empty due to an OS reinstall, new Hard Drive,
+    This is to prevent Rsync from wiping a destination path if the source
+    path mysteriously becomes empty due to an OS reinstall, new Hard Drive,
     etc...
     """
 
     def __init__(self,
                  source_dict: dict[str, object] = None,
                  destination_dict: dict[str, object] = None,
-                 enable_copy_threshold=True,
-                 subdir_copy_threshold=None,
-                 debug_mode=False):
+                 enable_copy_threshold = True,
+                 subdir_copy_threshold = None,
+                 debug_mode = False):
         """Construct the object.
 
-        :param self pointer to current object
-        :param source_user Name of the user on the source computer.
-        :param source_ip_list List of ip addresses that the source can use.
-        :param source_ip_path root directory used by the source computer.
-        :param source_directory_list List of paths to the source directories
-        :param destination_user name of the user on the destination computer.
-        :param destination_ip ip of the destination computer.
+        :param: self pointer to current object
+        :param: source_dict Dictionary containing information about the source computer.
+        :param: destination_dict Dictionary containing information about the destination computer.
 
-        :param enable_copy_threshold Determine if a threshold percentage will be used.
+        :param: enable_copy_threshold Determine if a threshold percentage will be used.
                                  Without a threshold percentage, the program will run
                                  just like rsync.
 
-        :param subdir_copy_threshold value that is used to determine if a
+        :param: subdir_copy_threshold value that is used to determine if a
                                  source directory has a size equal to or
                                  more than a percentage of a destination
                                  directory (if it exists)
 
-        :param debug_mode Enable Debug Mode for Testing
+        :param: debug_mode Enable Debug Mode for Testing
 
         """
         # Throw exception if threshold is not in range [40, 100]
@@ -81,14 +77,16 @@ class RsyncPath(object):
 
     def is_invalid_object(self):
         """Check if the object is valid or not."""
-        variable_list = [self.source_user,
-                         self.source_ip_list,
-                         self.source_ip_path,
-                         self.source_directory_list,
-                         self.destination_user,
-                         self.destination_ip,
-                         self.destination_ip_path,
-                         self.subdir_copy_threshold]
+        variable_list = [
+            self.source_user,
+            self.source_ip_list,
+            self.source_ip_path,
+            self.source_directory_list,
+            self.destination_user,
+            self.destination_ip,
+            self.destination_ip_path,
+            self.subdir_copy_threshold
+        ]
 
         for item in variable_list:
             if item is None:
@@ -110,7 +108,7 @@ class RsyncPath(object):
                              "internet connection and make sure the "
                              "other computers are online.")
 
-    def ping(self, ip_address):
+    def ping(self, ip_address: str):
         """Return True if host (str) responds to a ping request.
 
         Remember that a host may not respond to a ping (ICMP) request
@@ -126,8 +124,9 @@ class RsyncPath(object):
 
         return subprocess.call(command, stdout=subprocess.DEVNULL) == 0
 
-    def get_directory_size(self, directory_path):
-        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb' in Linux."""
+    def get_directory_size(self, directory_path: Path):
+        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb'
+        in Linux."""
         logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
         directory = directory_path
         result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
@@ -180,7 +179,7 @@ class RsyncPath(object):
         logging.info("self.rsync_directories(): Finished function call.")
 
     def run(self):
-        """Select a available connection and copies over specified source directories to the destination directory."""
+        """Select an available connection and copies over specified source directories to the destination directory."""
         self.source_ip = self.choose_connection()
         self.rsync_directories()
 
@@ -205,8 +204,8 @@ class RsyncPath(object):
 
         if DEBUG_MODE:
             logging.debug(f"self.verify_directory(): Backup Size: {backup_size} bytes")
-            logging.debug(
-                f"self.verify_directory(): Source Directory: {str(source_dir)} \tDestination Directory : {str(dest_dir)}")
+            debug_message = f"self.verify_directory(): Source Directory: {str(source_dir)} \tDestination Directory : {str(dest_dir)}"
+            logging.debug(debug_message)
 
         ssh_command = f"ssh {user}@{host} \"du -sbL '{str(source_dir)}'\""
         logging.debug(f"Command: {ssh_command}")
