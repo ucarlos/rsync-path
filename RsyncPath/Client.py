@@ -4,7 +4,6 @@
 # Client.py
 # Simple SSH Client used to execute specific commands on a remote machine.
 # -------------------------------------------------------------------------------
-import subprocess
 
 from fabric import Connection, Result
 from invoke.exceptions import UnexpectedExit
@@ -24,23 +23,23 @@ def can_connect_to_remote_machine(ip_address: str, remote_os_type: OSType):
     :param: ip_address
     :returns True if the remote address responds to the ping request. False otherwise.
     """
-    info("Client.ping(): Starting ping call.")
+    info("Client.can_connect_to_remote_machine(): Starting ping call.")
     if remote_os_type != OSType.POSIX:
-        error("Client.ping(): Cannot make a connection to an remote machine using an unsupported OS Type.")
+        error("Client.can_connect_to_remote_machine(): Cannot make a connection to an remote machine using an unsupported OS Type.")
         return False
 
     argument = "-n" if remote_os_type == OSType.WINDOWS else "-c"
     command = f"ping {argument} 1 {ip_address}"
     command_list = split(command)
 
-    debug(f"Client.ping(): Passing the following command list: {command_list}")
+    debug(f"Client.can_connect_to_remote_machine(): Passing the following command list: {command_list}")
     result = run(command_list, stdout=DEVNULL, stderr=DEVNULL)
     return result.returncode is not None and result.returncode == 0
 
 
 def create_client_instance_from_available_hostnames(username, hostname_list: list[dict]):
     """Select an available client from a hostname list and return a Client instance."""
-    debug("Client.select_available_client(): Searching for an available host.")
+    debug("Client.create_client_instance_from_available_hostnames(): Searching for an available host.")
     index = 1
     for hostname_dict in hostname_list:
         hostname = hostname_dict.get("hostname", "")
@@ -59,7 +58,7 @@ class Client(object):
     """A simple Client class to execute specific commands on both your local and remote machines."""
 
     def __init__(self, username, hostname, port=DEFAULT_SSH_PORT, remote_os_type=OSType.UNKNOWN):
-        """Construct the Client. Object."""
+        """Construct the Client Object."""
         self.ssh_connection = Connection(host=hostname, user=username, port=port)
         # Not used currently, but
         self.local_os_type = OSType.get_os_type()
@@ -80,10 +79,10 @@ class Client(object):
 
     def get_remote_directory_size_in_bytes(self, directory_path):
         """Retrieve the size of a specific directory on the remote machine."""
-        debug("Client..check_directory_size(): Starting function...")
+        debug("Client.get_remote_directory_size_in_bytes(): Starting function...")
 
         if self.remote_os_type != OSType.POSIX:
-            debug("Client.check_remote_directory_size_in_bytes(): Cannot check the directory size on a unsupported "
+            debug("Client.get_remote_directory_size_in_bytes(): Cannot check the directory size on a unsupported "
                   "OS.")
             return
 
@@ -95,35 +94,35 @@ class Client(object):
 
         # Now run the damn thing:
         try:
-            result = self.ssh_connection.run(command, shell=self.remote_shell_name, hide=True)
+            result: Result = self.ssh_connection.run(command, shell=self.remote_shell_name, hide=True)
         except UnexpectedExit as exception:
             exception_argument_list = exception.__str__().split("\n\n")
             invalid_command = exception_argument_list[1].split(":")[1]
             error_code = exception_argument_list[2].split(":")[1]
 
-            debug(f"Client.check_remote_directory_size_in_bytes(): Received Unexpected Exit Code {error_code} when "
+            debug(f"Client.get_remote_directory_size_in_bytes(): Received Unexpected Exit Code {error_code} when "
                   f"executing {invalid_command}. Returning None as the byte size.")
             return None
 
         # Now split the value:
         size_in_bytes = result.stdout.split("\t")[0] if self.remote_os_type == OSType.POSIX else result.stdout
-        debug(f"Client.check_remote_directory_size_in_bytes(): Retrieved Exit Code {result.exited}; "
+        debug(f"Client.get_remote_directory_size_in_bytes(): Retrieved Exit Code {result.exited}; "
               f"Size of {str(directory_path)} is {size_in_bytes} byte(s)")
         return int(size_in_bytes)
 
     def get_local_directory_size_in_bytes(self, directory_path: Path):
         """Determine the size of a directory in bytes."""
-        debug(f"Client.get_local_directory_size(): Getting the directory size of {str(directory_path)}")
+        debug(f"Client.get_local_directory_size_in_bytes(): Getting the directory size of {str(directory_path)}")
 
         size_in_bytes = int(sum(file.stat().st_size for file in directory_path.glob('**/*') if file.is_file()))
-        debug(f"Client.get_local_directory_size(): Size of {str(directory_path)} is {size_in_bytes}")
+        debug(f"Client.get_local_directory_size_in_bytes(): Size of {str(directory_path)} is {size_in_bytes}")
         return int(size_in_bytes)
 
     def does_remote_directory_exist(self, directory_path: Path):
         """Check if a directory exists on the remote machine."""
-        debug("Client..check_if_directory_exists(): Starting function...")
+        debug("Client.does_remote_directory_exist(): Starting function...")
         if self.remote_os_type != OSType.POSIX:
-            debug("Client.check_directory_size(): Cannot check the directory size on a unsupported OS.")
+            debug("Client.does_remote_directory_exist(): Cannot check the directory size on a unsupported OS.")
             return
 
         command = ""
@@ -141,28 +140,27 @@ class Client(object):
 
         # Now return the result.
         try:
-            result = self.ssh_connection.run(command, shell=self.remote_shell_name, hide=True)
+            result: Result = self.ssh_connection.run(command, shell=self.remote_shell_name, hide=True)
         except UnexpectedExit as exception:
             exception_argument_list = exception.__str__().split("\n\n")
             invalid_command = exception_argument_list[1].split(":")[1]
             error_code = exception_argument_list[2].split(":")[1]
 
-            debug(f"Client.check_if_remote_directory_exists(): Received Unexpected Exit Code {error_code} when "
+            debug(f"Client.does_remote_directory_exist(): Received Unexpected Exit Code {error_code} when "
                   f"executing {invalid_command}. Returning False.")
             return False
 
         result_code = result.exited
         return result_code is not None and result_code == 0
-    
+
     def does_local_directory_exist(self, directory_path: Path):
         return directory_path.exists()
-    
 
     def create_remote_root_directory(self, directory_path):
         """Create the remote_root_main_directory if it does not exist."""
-        debug("Client..create_root_remote_directory(): Starting function...")
+        debug("Client.create_root_remote_directory(): Starting function...")
         if self.remote_os_type != OSType.POSIX:
-            debug("Client.check_directory_size(): Cannot check the directory size on a unsupported OS.")
+            debug("Client.create_root_remote_directory(): Cannot check the directory size on a unsupported OS.")
             return False
 
         command = ""
@@ -183,41 +181,10 @@ class Client(object):
             return False
 
         # Now return the result.
-        debug(f"Client..create_root_remote_directory(): Created remote directory {str(directory_path)}")
+        debug(f"Client.create_root_remote_directory(): Created remote directory {str(directory_path)}")
         return True
 
     def create_local_root_directory(self, directory_path: Path):
         """Create the local root directory if it does not exist."""
         directory_path.mkdir(exist_ok=True)
-
-    def can_connect_to_remote_machine(self, ip_address: str):
-        """Verify that a connection to a remote machine can be made by sending a ping request.
-        NOTE: A host may not respond to a ping request even if the ip address is valid.
-
-        :param: ip_address
-        :returns True if the remote address responds to the ping request. False otherwise.
-        """
-        info("Client.ping(): Starting ping call:")
-
-        if self.remote_os_type != OSType.POSIX:
-            error("Client.ping(): Cannot make a connection to an remote machine using an unsupported OS Type.")
-            return False
-
-        argument = "-n" if self.remote_os_type == OSType.WINDOWS else "-c"
-        command = f"ping {argument} 1 {ip_address}"
-        command_list = split(command)
-
-        debug(f"Client.ping(): Passing the following command list: {command_list}")
-        try:
-            result = self.ssh_connection.local(command, shell=self.remote_shell_name, hide=True)
-        except UnexpectedExit as exception:
-            exception_argument_list = exception.__str__().split("\n\n")
-            invalid_command = exception_argument_list[1].split(":")[1]
-            error_code = exception_argument_list[2].split(":")[1]
-
-            debug(f"Client.can_connect_to_remote_machine(): Received Unexpected Exit Code {error_code} when "
-                  f"executing {invalid_command}. Returning False.")
-            return False
-
-        return result.return_code is not None and result.return_code == 0
 
