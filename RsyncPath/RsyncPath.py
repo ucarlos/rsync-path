@@ -5,16 +5,19 @@
 # A Python module that can handle rsync a group of directories from a source
 # ip address to destination ip with a specified path.
 # ------------------------------------------------------------------------------
+from TransferDirection import TransferDirection
+from OSType import OSType
 from pathlib import Path
+from re import sub
+from shlex import split
+import Client
 import logging
 import platform
 import subprocess
-from shlex import split
-from re import sub
 
+MIN_SUBDIRECTORY_THRESHOLD = 40
+MAX_SUBDIRECTORY_THRESHOLD = 101
 
-# from SSHClient import SSHClient, OS_TYPE
-# TODO: replace the source and destination variables with source and destination maps.
 class RsyncPath(object):
     """A Thin Wrapper around Rsync that handles threshold values.
 
@@ -26,9 +29,9 @@ class RsyncPath(object):
     def __init__(self,
                  source_dict: dict[str, object] = None,
                  destination_dict: dict[str, object] = None,
-                 enable_copy_threshold = True,
-                 subdir_copy_threshold = None,
-                 debug_mode = False):
+                 threshold_dict: dict[str, object] = None,
+                 transfer_direction: TransferDirection = None,
+                 debug_mode=False):
         """Construct the object.
 
         :param: self pointer to current object
@@ -47,24 +50,26 @@ class RsyncPath(object):
         :param: debug_mode Enable Debug Mode for Testing
 
         """
-        # Throw exception if threshold is not in range [40, 100]
-
-        if enable_copy_threshold is True:
-            self.subdir_copy_threshold = float(subdir_copy_threshold)
-            if int(self.subdir_copy_threshold) not in range(40, 101):
-                raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of [40, 100]")
 
         self.source_dict = source_dict
-        self.source_user = self.source_dict['source_user']
-        self.source_ip_list = self.source_dict['source_ip_list']
-        self.source_ip_path = self.source_dict['source_ip_path']
-        self.source_directory_list = self.source_dict['source_directory_list']
+        self.source_user = self.source_dict.get('source_user', None)
+        self.source_ip_list = self.source_dict.get("source_ip_list", None)
+        self.source_ip_path = self.source_dict.get('source_ip_path', None)
+        self.source_directory_list = self.source_dict.get('source_directory_list', None)
 
         self.destination_dict = destination_dict
-        self.destination_user = self.destination_dict['destination_user']
-        self.destination_ip = self.destination_dict['destination_ip']
-        self.destination_ip_path = self.destination_dict['destination_ip_path']
-        self.enable_copy_threshold = self.destination_dict['enable_copy_threshold']
+        self.destination_user = self.destination_dict.get('destination_user', None)
+        self.destination_ip = self.destination_dict.get('destination_ip', None)
+        self.destination_ip_path = self.destination_dict.get('destination_ip_path', None)
+
+        self.enable_copy_threshold = threshold_dict.get("enable_copy_threshold", True)
+        self.subdir_copy_threshold = float(threshold_dict.get("subdir_copy_threshold", 0))
+
+        # Throw exception if threshold is not in range [40, 100]
+
+        if self.enable_copy_threshold is True:
+            if int(self.subdir_copy_threshold) not in range(MIN_SUBDIRECTORY_THRESHOLD, MAX_SUBDIRECTORY_THRESHOLD):
+                raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of [40, 100]")
 
         self.debug_mode = debug_mode
         if self.debug_mode:
@@ -74,6 +79,9 @@ class RsyncPath(object):
 
         if self.is_invalid_object():
             raise Exception("Error: Object cannot contain a value of None.")
+            
+        self.transfer_direction = transfer_direction
+        self.ssh_client = Client.create_client_instance_from_available_hostnames(self.source_user, self.source_ip_list)
 
     def is_invalid_object(self):
         """Check if the object is valid or not."""
@@ -133,13 +141,15 @@ class RsyncPath(object):
         logging.debug(f"self.get_directory_size(): Size of {str(directory_path)} is {float(result)}")
         return float(result)
 
-    def rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
+    def __rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """Copy source directories to a destination path."""
         logging.info("self.rsync_directories(): Starting Rsync.")
 
         dry_run_string = "--dry-run" if DEBUG_MODE else ""
         # Make sure that destination path exists.
         # TODO: Replace this behavior in an SSH Client.
+        self.ssh_client.create_remote_root_directory(self.destination_ip_path)
+
         # self.destination_ip_path.mkdir(exist_ok=True)
 
         for path in self.source_directory_list:
@@ -180,15 +190,13 @@ class RsyncPath(object):
 
     def run(self):
         """Select an available connection and copies over specified source directories to the destination directory."""
-        self.source_ip = self.choose_connection()
-        self.rsync_directories()
+        self.__rsync_directories()
 
     def dry_run(self):
         """Test each source directory with the destination directory, comparing the size. This DOES NOT copy the
         directory.
         """
-        self.source_ip = self.choose_connection()
-        self.rsync_directories(self.debug_mode, True)
+        self.__rsync_directories(self.debug_mode, True)
 
     def verify_directory(self, source_dir, dest_dir, DEBUG_MODE=False):
         """Determine if the contents of the temp directory is empty or smaller than the threshold defined in
