@@ -18,6 +18,7 @@ import subprocess
 MIN_SUBDIRECTORY_THRESHOLD = 40
 MAX_SUBDIRECTORY_THRESHOLD = 101
 
+
 class RsyncPath(object):
     """A Thin Wrapper around Rsync that handles threshold values.
 
@@ -38,14 +39,17 @@ class RsyncPath(object):
         :param: source_dict Dictionary containing information about the source computer.
         :param: destination_dict Dictionary containing information about the destination computer.
 
-        :param: enable_copy_threshold Determine if a threshold percentage will be used.
-                                 Without a threshold percentage, the program will run
-                                 just like rsync.
+        :param: threshold_dict Dictionary that should only contain two keys. An enable_copy_threshold key determines
+        if a threshold percentage will be used to compare directory sizes between local and remote machines.
+        Disabling this will cause the program to run exactly like rsync.  A subdir_copy_threshold key determines the
+        percentage used to compare directory sizes between local and remote machines. The directory size is converted
+        into percentage values to be compared to the subdir_copy_threshold. If the directory size is less than the
+        subdir_copy_threshold percentage, then the changes done to a directory will NOT be copied over from local to
+        remote machine OR remote machine to local machine to prevent accidental deletion if the directory is
+        truncated, does not exist, etc.
 
-        :param: subdir_copy_threshold value that is used to determine if a
-                                 source directory has a size equal to or
-                                 more than a percentage of a destination
-                                 directory (if it exists)
+        :param: transfer_directory The direction of the Rsync Transfer from a remote machine to a local machine or
+        from a local machine to a remote machine.
 
         :param: debug_mode Enable Debug Mode for Testing
 
@@ -79,7 +83,7 @@ class RsyncPath(object):
 
         if self.is_invalid_object():
             raise Exception("Error: Object cannot contain a value of None.")
-            
+
         self.transfer_direction = transfer_direction
         self.ssh_client = Client.create_client_instance_from_available_hostnames(self.source_user, self.source_ip_list)
 
@@ -102,45 +106,6 @@ class RsyncPath(object):
 
         return False
 
-    def choose_connection(self):
-        """Select a connection to use from the specified list."""
-        logging.debug("self.choose_connection(): Searching for an available host.")
-        for i in range(0, len(self.source_ip_list)):
-            print(f"Checking if host {i} ({self.source_ip_list[i]}) is available...")
-            if self.ping(self.source_ip_list[i]):
-                print(f"({self.source_ip_list[i]}) is available!")
-                return self.source_ip_list[i]
-
-        raise RuntimeWarning("Could not establish a connection to any "
-                             "machine in the IP list. Please check your "
-                             "internet connection and make sure the "
-                             "other computers are online.")
-
-    def ping(self, ip_address: str):
-        """Return True if host (str) responds to a ping request.
-
-        Remember that a host may not respond to a ping (ICMP) request
-        even if the host name is valid.
-        """
-        # Option for the number of packets as a function of
-        os_name = platform.system().lower()
-
-        param = '-n' if os_name == 'windows' else '-c'
-        # Choose the null file to send output to:
-        # Building the command. Ex: "ping -c 1 google.com"
-        command = ['ping', param, '1', ip_address]
-
-        return subprocess.call(command, stdout=subprocess.DEVNULL) == 0
-
-    def get_directory_size(self, directory_path: Path):
-        """Determine the size of a directory in bytes. The size is exactly the same as the size reported by 'du -sb'
-        in Linux."""
-        logging.debug(f"self.get_directory_size(): Getting size of {str(directory_path)}")
-        directory = directory_path
-        result = sum(f.stat().st_size for f in directory.glob('**/*') if f.is_file())
-        logging.debug(f"self.get_directory_size(): Size of {str(directory_path)} is {float(result)}")
-        return float(result)
-
     def __rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """Copy source directories to a destination path."""
         logging.info("self.rsync_directories(): Starting Rsync.")
@@ -148,7 +113,11 @@ class RsyncPath(object):
         dry_run_string = "--dry-run" if DEBUG_MODE else ""
         # Make sure that destination path exists.
         # TODO: Replace this behavior in an SSH Client.
-        self.ssh_client.create_remote_root_directory(self.destination_ip_path)
+
+        if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+            self.ssh_client.create_local_root_directory(self.destination_ip_path)
+        else:
+            self.ssh_client.create_remote_root_directory(self.destination_ip_path)
 
         # self.destination_ip_path.mkdir(exist_ok=True)
 
@@ -163,11 +132,17 @@ class RsyncPath(object):
 
             full_source_path = f"\"{source_path}\""
             full_destination_path = f"{str(self.destination_user)}@{str(self.destination_ip)}:\"{str(self.destination_ip_path)}\""
-            rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_destination_path}"
+
+            if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+                rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_destination_path}"
+                does_dest_path_exist = self.ssh_client.does_remote_directory_exist(dest_path)
+            else:  # if self.transfer_direction == TransferDirection.COPY_FROM_LOCAL_TO_REMOTE:
+                rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_destination_path} {full_source_path}"
+                does_dest_path_exist = self.ssh_client.does_local_directory_exist(dest_path)
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
-            if (not dest_path.exists()) or not self.enable_copy_threshold:
+            if (not does_dest_path_exist) or not self.enable_copy_threshold:
                 logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
                 if not TEST_RUN:
                     subprocess.run(split(rsync_command))
@@ -177,8 +152,8 @@ class RsyncPath(object):
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
-                    print(
-                        f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
+                    print(f"Warning: Cannot move {str(path)} to {str(dest_path)} Since it is not at least "
+                          f"{str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
                     print(f"{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M) ")
                     logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
@@ -204,27 +179,19 @@ class RsyncPath(object):
         """
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold = self.subdir_copy_threshold / 100
-        backup_size = threshold * self.get_directory_size(dest_dir)
 
-        # The threshold is compared through a subprocess:
-        user = self.source_user
-        host = self.source_ip
+        if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+            minimum_local_size = threshold * self.ssh_client.get_local_directory_size_in_bytes(dest_dir)
+            destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(source_dir)
+        else:
+            minimum_local_size = threshold * self.ssh_client.get_local_directory_size_in_bytes(source_dir)
+            destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(dest_dir)
 
         if DEBUG_MODE:
-            logging.debug(f"self.verify_directory(): Backup Size: {backup_size} bytes")
+            logging.debug(f"self.verify_directory(): Backup Size: {minimum_local_size} bytes")
             debug_message = f"self.verify_directory(): Source Directory: {str(source_dir)} \tDestination Directory : {str(dest_dir)}"
             logging.debug(debug_message)
+            logging.debug(f"self.verify_directory(): Destination Directory Size is {destination_directory_size}")
 
-        ssh_command = f"ssh {user}@{host} \"du -sbL '{str(source_dir)}'\""
-        logging.debug(f"Command: {ssh_command}")
-        if DEBUG_MODE:
-            logging.debug(f"self.verify_directory(): Preparing to call {ssh_command}")
-
-        logging.debug(f"Command Split: {split(ssh_command)}")
-        ssh_result = subprocess.Popen(split(ssh_command), stdout=subprocess.PIPE).communicate()
-        temp_size = sub(r"[^\d]", "", ssh_result[0].decode('utf-8'))
-
-        if DEBUG_MODE:
-            logging.debug(f"self.verify_directory(): Destination Directory Size is {temp_size}")
-
-        return (float(temp_size) >= backup_size), backup_size, float(temp_size)
+        return (float(destination_directory_size) >= minimum_local_size), minimum_local_size, float(
+            destination_directory_size)

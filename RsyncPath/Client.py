@@ -61,6 +61,7 @@ class Client(object):
     def __init__(self, username, hostname, port=DEFAULT_SSH_PORT, remote_os_type=OSType.UNKNOWN):
         """Construct the Client. Object."""
         self.ssh_connection = Connection(host=hostname, user=username, port=port)
+        # Not used currently, but
         self.local_os_type = OSType.get_os_type()
         self.remote_os_type = remote_os_type
 
@@ -77,7 +78,7 @@ class Client(object):
         if os_type is not None:
             self.remote_os_type = os_type
 
-    def check_remote_directory_size_in_bytes(self, directory_path):
+    def get_remote_directory_size_in_bytes(self, directory_path):
         """Retrieve the size of a specific directory on the remote machine."""
         debug("Client..check_directory_size(): Starting function...")
 
@@ -110,7 +111,15 @@ class Client(object):
               f"Size of {str(directory_path)} is {size_in_bytes} byte(s)")
         return int(size_in_bytes)
 
-    def check_if_remote_directory_exists(self, directory_path: Path):
+    def get_local_directory_size_in_bytes(self, directory_path: Path):
+        """Determine the size of a directory in bytes."""
+        debug(f"Client.get_local_directory_size(): Getting the directory size of {str(directory_path)}")
+
+        size_in_bytes = int(sum(file.stat().st_size for file in directory_path.glob('**/*') if file.is_file()))
+        debug(f"Client.get_local_directory_size(): Size of {str(directory_path)} is {size_in_bytes}")
+        return int(size_in_bytes)
+
+    def does_remote_directory_exist(self, directory_path: Path):
         """Check if a directory exists on the remote machine."""
         debug("Client..check_if_directory_exists(): Starting function...")
         if self.remote_os_type != OSType.POSIX:
@@ -144,6 +153,10 @@ class Client(object):
 
         result_code = result.exited
         return result_code is not None and result_code == 0
+    
+    def does_local_directory_exist(self, directory_path: Path):
+        return directory_path.exists()
+    
 
     def create_remote_root_directory(self, directory_path):
         """Create the remote_root_main_directory if it does not exist."""
@@ -208,10 +221,3 @@ class Client(object):
 
         return result.return_code is not None and result.return_code == 0
 
-    def get_local_directory_size(self, directory_path: Path):
-        """Determine the size of a directory in bytes."""
-        debug(f"Client.get_local_directory_size(): Getting the directory size of {str(directory_path)}")
-
-        size_in_bytes = float(sum(file.stat().st_size for file in directory_path.glob('**/*') if file.is_file()))
-        debug(f"Client.get_local_directory_size(): Size of {str(directory_path)} is {size_in_bytes}")
-        return size_in_bytes
