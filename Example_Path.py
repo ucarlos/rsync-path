@@ -6,6 +6,8 @@
 # -----------------------------------------------------------------------------
 from pathlib import Path
 from RsyncPath.RsyncPath import RsyncPath
+from RsyncPath.TransferDirection import TransferDirection
+from RsyncPath.OSType import OSType
 import argparse
 import logging
 
@@ -13,7 +15,10 @@ import logging
 def run_rsync_path(argument_dict):
     """Create a RsyncPath object and run it."""
     source_user = "USERNAME"
-    source_ip_list = ["SOURCE_IP"]
+    source_ip_dict = [
+        {"hostname": "SOURCE_IP", "os_type": OSType.UNKNOWN}
+    ]
+
     source_ip_path = Path(Path.home().root)
     source_directory_list = ["Example Folder"]
     destination_user = "DEST_USERNAME"
@@ -26,7 +31,7 @@ def run_rsync_path(argument_dict):
 
     logging.debug("Example_Path.run_rsync_path():")
     logging.debug(f"Source user: {str(source_user)}")
-    logging.debug("Source IP List: " + "\n".join(source_ip_list))
+    logging.debug(f"Source IP List: {source_ip_dict}")
     logging.debug(f"Source IP Path: {str(source_ip_path)}")
     logging.debug("Source Directory List: " + "\n".join(source_directory_list))
 
@@ -35,15 +40,31 @@ def run_rsync_path(argument_dict):
     logging.debug(f"Destination IP Path: {str(destination_ip_path)}")
     logging.debug(f"Copy Threshold: {str(subdir_copy_threshold)}")
 
-    nameless_path = RsyncPath(source_user,
-                              source_ip_list,
-                              source_ip_path,
-                              source_directory_list,
-                              destination_user,
-                              destination_ip,
-                              destination_ip_path,
-                              enable_copy_threshold,
-                              subdir_copy_threshold,
+    # Now package it all up:
+    source_dict = {
+        "source_user" : source_user,
+        "source_ip_list": source_ip_dict,
+        "source_ip_path": source_ip_path,
+        "source_directory_list": source_directory_list
+    }
+
+    destination_dict = {
+        "destination_user": destination_user,
+        "destination_ip": destination_ip,
+        "destination_ip_path": destination_ip_path
+    }
+
+    threshold_dict = {
+        "enable_copy_threshold": enable_copy_threshold,
+        "subdir_copy_threshold": subdir_copy_threshold
+    }
+
+    transfer_direction = TransferDirection.COPY_FROM_LOCAL_TO_REMOTE
+
+    nameless_path = RsyncPath(source_dict,
+                              destination_dict,
+                              threshold_dict,
+                              transfer_direction,
                               DEBUG_MODE)
 
     if argument_dict['dry_run']:

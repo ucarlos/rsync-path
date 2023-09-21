@@ -6,13 +6,10 @@
 # ip address to destination ip with a specified path.
 # ------------------------------------------------------------------------------
 from TransferDirection import TransferDirection
-from OSType import OSType
 from pathlib import Path
-from re import sub
 from shlex import split
 import Client
 import logging
-import platform
 import subprocess
 
 MIN_SUBDIRECTORY_THRESHOLD = 40
@@ -54,7 +51,6 @@ class RsyncPath(object):
         :param: debug_mode Enable Debug Mode for Testing
 
         """
-
         self.source_dict = source_dict
         self.source_user = self.source_dict.get('source_user', None)
         self.source_ip_list = self.source_dict.get("source_ip_list", None)
@@ -69,13 +65,14 @@ class RsyncPath(object):
         self.enable_copy_threshold = threshold_dict.get("enable_copy_threshold", True)
         self.subdir_copy_threshold = float(threshold_dict.get("subdir_copy_threshold", 0))
 
-        # Throw exception if threshold is not in range [40, 100]
-
+        # Throw exception if threshold is not in range [MIN_SUBDIR_THRESHOLD, MAX_SUBDIR_THRESHOLD]:
         if self.enable_copy_threshold is True:
             if int(self.subdir_copy_threshold) not in range(MIN_SUBDIRECTORY_THRESHOLD, MAX_SUBDIRECTORY_THRESHOLD):
-                raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of [40, 100]")
+                raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of "
+                                f"[{MIN_SUBDIRECTORY_THRESHOLD}, {MAX_SUBDIRECTORY_THRESHOLD - 1}]")
 
         self.debug_mode = debug_mode
+
         if self.debug_mode:
             logging.basicConfig(level=logging.DEBUG)
         else:
@@ -178,13 +175,13 @@ class RsyncPath(object):
         subdir_copy_threshold.
         """
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
-        threshold = self.subdir_copy_threshold / 100
+        threshold_percentage = self.subdir_copy_threshold / 100
 
         if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-            minimum_local_size = threshold * self.ssh_client.get_local_directory_size_in_bytes(dest_dir)
+            minimum_local_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(dest_dir)
             destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(source_dir)
         else:
-            minimum_local_size = threshold * self.ssh_client.get_local_directory_size_in_bytes(source_dir)
+            minimum_local_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(source_dir)
             destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(dest_dir)
 
         if DEBUG_MODE:
@@ -193,5 +190,6 @@ class RsyncPath(object):
             logging.debug(debug_message)
             logging.debug(f"self.verify_directory(): Destination Directory Size is {destination_directory_size}")
 
-        return (float(destination_directory_size) >= minimum_local_size), minimum_local_size, float(
-            destination_directory_size)
+        return ((float(destination_directory_size) >= minimum_local_size), minimum_local_size,
+                float(destination_directory_size))
+    
