@@ -6,19 +6,29 @@
 # -----------------------------------------------------------------------------
 from pathlib import Path
 from RsyncPath.RsyncPath import RsyncPath
-from RsyncPath.TransferDirection import TransferDirection
 from RsyncPath.OSType import OSType
+from RsyncPath.TransferDirection import TransferDirection
 import argparse
 import logging
 
 
-def run_rsync_path(argument_dict):
+def run_rsync_path(parameter_argument_dict):
     """Create a RsyncPath object and run it."""
+
+    # You can either define a specific source user to use for all the remove machines,
+    # or place the username in the remote_machine_ip_dict.
+    # If you do so, set the source_user variable to None.
     source_user = "USERNAME"
-    source_ip_dict = [
-        {"hostname": "SOURCE_IP", "os_type": OSType.UNKNOWN}
+    remote_machine_ip_list = [
+        {"username": "USERNAME", "hostname": "SOURCE_IP", "os_type": OSType.UNKNOWN}
     ]
 
+    # Are we copying from a local machine to list of remote machines
+    # Or from many possible remote machines to a local machine?
+    transfer_direction = TransferDirection.COPY_FROM_LOCAL_TO_REMOTE
+
+    # TODO: I just realized that I might need to reconsider the constructor again to make this more intuitive.
+    # again since
     source_ip_path = Path(Path.home().root)
     source_directory_list = ["Example Folder"]
     destination_user = "DEST_USERNAME"
@@ -27,11 +37,13 @@ def run_rsync_path(argument_dict):
     subdir_copy_threshold = 85.0
     enable_copy_threshold = True
 
-    DEBUG_MODE = argument_dict['debug_mode']
+    DEBUG_MODE = parameter_argument_dict['debug_mode']
 
     logging.debug("Example_Path.run_rsync_path():")
-    logging.debug(f"Source user: {str(source_user)}")
-    logging.debug(f"Source IP List: {source_ip_dict}")
+    if source_user:
+        logging.debug(f"Source user: {str(source_user)}")
+
+    logging.debug(f"Source IP List: {remote_machine_ip_list}")
     logging.debug(f"Source IP Path: {str(source_ip_path)}")
     logging.debug("Source Directory List: " + "\n".join(source_directory_list))
 
@@ -43,7 +55,7 @@ def run_rsync_path(argument_dict):
     # Now package it all up:
     source_dict = {
         "source_user" : source_user,
-        "source_ip_list": source_ip_dict,
+        "remote_machine_ip_list": remote_machine_ip_list,
         "source_ip_path": source_ip_path,
         "source_directory_list": source_directory_list
     }
@@ -59,15 +71,13 @@ def run_rsync_path(argument_dict):
         "subdir_copy_threshold": subdir_copy_threshold
     }
 
-    transfer_direction = TransferDirection.COPY_FROM_LOCAL_TO_REMOTE
-
     nameless_path = RsyncPath(source_dict,
                               destination_dict,
                               threshold_dict,
                               transfer_direction,
                               DEBUG_MODE)
 
-    if argument_dict['dry_run']:
+    if parameter_argument_dict['dry_run']:
         nameless_path.dry_run()
     else:
         nameless_path.run()

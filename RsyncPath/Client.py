@@ -10,7 +10,8 @@ from invoke.exceptions import UnexpectedExit
 from subprocess import run, DEVNULL
 from pathlib import Path, PureWindowsPath, WindowsPath
 from shlex import split
-from OSType import OSType
+
+from .OSType import OSType
 from logging import info, debug, error
 
 DEFAULT_SSH_PORT = 22
@@ -25,7 +26,8 @@ def can_connect_to_remote_machine(ip_address: str, remote_os_type: OSType):
     """
     info("Client.can_connect_to_remote_machine(): Starting ping call.")
     if remote_os_type != OSType.POSIX:
-        error("Client.can_connect_to_remote_machine(): Cannot make a connection to an remote machine using an unsupported OS Type.")
+        error(
+            "Client.can_connect_to_remote_machine(): Cannot make a connection to an remote machine using an unsupported OS Type.")
         return False
 
     argument = "-n" if remote_os_type == OSType.WINDOWS else "-c"
@@ -37,9 +39,27 @@ def can_connect_to_remote_machine(ip_address: str, remote_os_type: OSType):
     return result.returncode is not None and result.returncode == 0
 
 
-def create_client_instance_from_available_hostnames(username, hostname_list: list[dict]):
+def create_instance_from_available_hostnames(hostname_list: list[dict]):
     """Select an available client from a hostname list and return a Client instance."""
     debug("Client.create_client_instance_from_available_hostnames(): Searching for an available host.")
+    index = 1
+    for hostname_dict in hostname_list:
+        hostname = hostname_dict.get("hostname", "")
+        os_type = hostname_dict.get("os_type", "")
+        username = hostname_dict.get("username", "")
+        debug(f"Checking if host {index} with address {hostname} is available:")
+        if can_connect_to_remote_machine(hostname, os_type):
+            return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
+        index += 1
+
+    error_message = """Could not establish any connection to any remote machine on the IP List. Please check your
+    internet connection and make sure that at least one of the remote machines is available."""
+    raise RuntimeError(error_message)
+
+
+def create_instance_from_username_and_available_hostnames(username, hostname_list: list[dict]):
+    """Select an available client from a specified username and hostname list and return a Client instance."""
+    debug("Client.create_client_instance_from_username_and_available_hostnames(): Searching for an available host.")
     index = 1
     for hostname_dict in hostname_list:
         hostname = hostname_dict.get("hostname", "")
@@ -187,4 +207,3 @@ class Client(object):
     def create_local_root_directory(self, directory_path: Path):
         """Create the local root directory if it does not exist."""
         directory_path.mkdir(exist_ok=True)
-

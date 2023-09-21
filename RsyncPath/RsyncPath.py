@@ -5,10 +5,11 @@
 # A Python module that can handle rsync a group of directories from a source
 # ip address to destination ip with a specified path.
 # ------------------------------------------------------------------------------
-from TransferDirection import TransferDirection
+
+from . import Client
+from . import TransferDirection
 from pathlib import Path
 from shlex import split
-import Client
 import logging
 import subprocess
 
@@ -28,7 +29,7 @@ class RsyncPath(object):
                  source_dict: dict[str, object] = None,
                  destination_dict: dict[str, object] = None,
                  threshold_dict: dict[str, object] = None,
-                 transfer_direction: TransferDirection = None,
+                 transfer_direction: TransferDirection.TransferDirection = None,
                  debug_mode=False):
         """Construct the object.
 
@@ -53,7 +54,7 @@ class RsyncPath(object):
         """
         self.source_dict = source_dict
         self.source_user = self.source_dict.get('source_user', None)
-        self.source_ip_list = self.source_dict.get("source_ip_list", None)
+        self.remote_machine_ip_list = self.source_dict.get("remote_machine_ip_list", None)
         self.source_ip_path = self.source_dict.get('source_ip_path', None)
         self.source_directory_list = self.source_dict.get('source_directory_list', None)
 
@@ -81,14 +82,23 @@ class RsyncPath(object):
         if self.is_invalid_object():
             raise Exception("Error: Object cannot contain a value of None.")
 
-        self.transfer_direction = transfer_direction
-        self.ssh_client = Client.create_client_instance_from_available_hostnames(self.source_user, self.source_ip_list)
+        self.transfer_direction = transfer_direction if transfer_direction else None
+
+        if not self.transfer_direction:
+            raise RuntimeError("Error: Cannot determine Transfer Direction.")
+        
+        if self.source_user is None:
+            self.ssh_client = Client.create_instance_from_available_hostnames(self.remote_machine_ip_list)
+        else:
+            self.ssh_client = Client.create_instance_from_username_and_available_hostnames(self.source_user,
+                                                                                           self.remote_machine_ip_list)
 
     def is_invalid_object(self):
         """Check if the object is valid or not."""
+        # TODO: I need to revise this:
         variable_list = [
             self.source_user,
-            self.source_ip_list,
+            self.remote_machine_ip_list,
             self.source_ip_path,
             self.source_directory_list,
             self.destination_user,
@@ -111,7 +121,7 @@ class RsyncPath(object):
         # Make sure that destination path exists.
         # TODO: Replace this behavior in an SSH Client.
 
-        if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+        if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             self.ssh_client.create_local_root_directory(self.destination_ip_path)
         else:
             self.ssh_client.create_remote_root_directory(self.destination_ip_path)
@@ -130,7 +140,7 @@ class RsyncPath(object):
             full_source_path = f"\"{source_path}\""
             full_destination_path = f"{str(self.destination_user)}@{str(self.destination_ip)}:\"{str(self.destination_ip_path)}\""
 
-            if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+            if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
                 rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_destination_path}"
                 does_dest_path_exist = self.ssh_client.does_remote_directory_exist(dest_path)
             else:  # if self.transfer_direction == TransferDirection.COPY_FROM_LOCAL_TO_REMOTE:
@@ -177,7 +187,7 @@ class RsyncPath(object):
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold_percentage = self.subdir_copy_threshold / 100
 
-        if self.transfer_direction == TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+        if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             minimum_local_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(dest_dir)
             destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(source_dir)
         else:
@@ -192,4 +202,3 @@ class RsyncPath(object):
 
         return ((float(destination_directory_size) >= minimum_local_size), minimum_local_size,
                 float(destination_directory_size))
-    
