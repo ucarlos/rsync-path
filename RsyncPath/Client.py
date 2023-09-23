@@ -25,10 +25,16 @@ def can_connect_to_remote_machine(ip_address: str, remote_os_type: OSType):
     :returns True if the remote address responds to the ping request. False otherwise.
     """
     info("Client.can_connect_to_remote_machine(): Starting ping call.")
-    if remote_os_type != OSType.POSIX:
-        error(
-            "Client.can_connect_to_remote_machine(): Cannot make a connection to an remote machine using an unsupported OS Type.")
+    if ip_address is None or len(ip_address) == 0:
+        error(f"Client.can_connect_to_remote_machine(): Cannot make a connection to {ip_address} using an "
+              "username that is empty or None.")
         return False
+
+    if remote_os_type != OSType.POSIX:
+        error("Client.can_connect_to_remote_machine(): Cannot make a connection to an remote machine using an "
+              "unsupported OS Type.")
+        return False
+
 
     argument = "-n" if remote_os_type == OSType.WINDOWS else "-c"
     command = f"ping {argument} 1 {ip_address}"
@@ -52,14 +58,19 @@ def create_instance_from_available_hostnames(hostname_list: list[dict]):
             return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
         index += 1
 
-    error_message = """Could not establish any connection to any remote machine on the IP List. Please check your
+    error_message = """Could not establish any connection to any remote machine on the IP List. Make sure that Please check your
     internet connection and make sure that at least one of the remote machines is available."""
     raise RuntimeError(error_message)
 
 
-def create_instance_from_username_and_available_hostnames(username, hostname_list: list[dict]):
+def create_instance_from_username_and_available_hostnames(username: str, hostname_list: list[dict]):
     """Select an available client from a specified username and hostname list and return a Client instance."""
     debug("Client.create_client_instance_from_username_and_available_hostnames(): Searching for an available host.")
+
+    if username is None or len(username) == 0:
+        raise RuntimeError("Error: Cannot establish any connection to a machine on the IP List due to having a "
+                           "username is that is either empty or None.")
+
     index = 1
     for hostname_dict in hostname_list:
         hostname = hostname_dict.get("hostname", "")
@@ -80,10 +91,13 @@ class Client(object):
     def __init__(self, username, hostname, port=DEFAULT_SSH_PORT, remote_os_type=OSType.UNKNOWN):
         """Construct the Client Object."""
         self.ssh_connection = Connection(host=hostname, user=username, port=port)
+
+        self.username = username
+        self.hostname = hostname
+        self.port = port
         # Not used currently, but
         self.local_os_type = OSType.get_os_type()
         self.remote_os_type = remote_os_type
-
         self.remote_shell_name = "/bin/bash" if self.remote_os_type == OSType.POSIX else "cmd.exe"
         self.local_shell_name = "/bin/bash" if self.local_os_type == OSType.POSIX else "cmd.exe"
 
@@ -93,7 +107,10 @@ class Client(object):
         """
         if self.ssh_connection.is_connected():
             self.ssh_connection.close()
-        self.ssh_connection = Connection(user=username, hostname=hostname, port=port)
+        self.ssh_connection = Connection(user=username, host=hostname, port=port)
+        self.username = username
+        self.hostname = hostname
+        self.port = port
         if os_type is not None:
             self.remote_os_type = os_type
 
