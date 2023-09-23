@@ -6,6 +6,7 @@
 # -------------------------------------------------------------------------------
 
 from fabric import Connection, Result
+from paramiko.ssh_exception import SSHException
 from invoke.exceptions import UnexpectedExit
 from subprocess import run, DEVNULL
 from pathlib import Path, PureWindowsPath, WindowsPath
@@ -141,6 +142,8 @@ class Client(object):
                   f"executing {invalid_command}. Returning None as the byte size.")
             return None
 
+        # TODO: Handle SSH Exceptions gracefully (Test this by running sudo shutdown "+3" on the remote machine)
+
         # Now split the value:
         size_in_bytes = result.stdout.split("\t")[0] if self.remote_os_type == OSType.POSIX else result.stdout
         debug(f"Client.get_remote_directory_size_in_bytes(): Retrieved Exit Code {result.exited}; "
@@ -187,6 +190,8 @@ class Client(object):
                   f"executing {invalid_command}. Returning False.")
             return False
 
+        # TODO: Handle SSH Exceptions gracefully (Test this by running sudo shutdown "+3" on the remote machine)
+
         result_code = result.exited
         return result_code is not None and result_code == 0
 
@@ -216,6 +221,10 @@ class Client(object):
             error(f"Client.create_root_remote_directory(): Unable to create directory {str(directory_path)}"
                   f"while executing {invalid_command} since it returned {error_code}")
             return False
+
+        # TODO: Handle SSH Exceptions gracefully (Test this by running sudo shutdown "+3" on the remote machine)
+
+
 
         # Now return the result.
         debug(f"Client.create_root_remote_directory(): Created remote directory {str(directory_path)}")

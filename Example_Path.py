@@ -157,7 +157,7 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
     remote_dict = {
         "remote_username": remote_username if remote_username else None,
         "remote_machine_ip_list": remote_machine_ip_list,
-        "remote_machine_root_path:": remote_machine_root_path,
+        "remote_machine_root_path": remote_machine_root_path,
         "remote_machine_directory_list": remote_machine_directory_list
     }
 

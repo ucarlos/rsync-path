@@ -26,8 +26,8 @@ class RsyncPath(object):
     """
 
     def __init__(self,
-                 source_dict: dict[str, object] = None,
-                 destination_dict: dict[str, object] = None,
+                 local_dict: dict[str, object] = None,
+                 remote_dict: dict[str, object] = None,
                  threshold_dict: dict[str, object] = None,
                  transfer_direction: TransferDirection.TransferDirection = None,
                  debug_mode=False):
@@ -52,13 +52,13 @@ class RsyncPath(object):
         :param: debug_mode Enable Debug Mode for Testing
 
         """
-        self.local_machine_dict = source_dict
+        self.local_machine_dict = local_dict
         self.local_username = self.local_machine_dict.get('local_username', None)
         self.local_machine_ip_list = self.local_machine_dict.get("local_machine_ip_list", None)
-        self.local_machine_root_path = self.local_machine_dict.get('source_ip_path', None)
-        self.local_machine_directory_list = self.local_machine_dict.get('source_directory_list', None)
+        self.local_machine_root_path = self.local_machine_dict.get('local_machine_root_path', None)
+        self.local_machine_directory_list = self.local_machine_dict.get('local_machine_directory_list', None)
 
-        self.remote_machine_dict = destination_dict
+        self.remote_machine_dict = remote_dict
         self.remote_username: str = self.remote_machine_dict.get('remote_username', None)
         self.remote_machine_ip_list = self.remote_machine_dict.get('remote_machine_ip_list', None)
         self.remote_machine_root_path = self.remote_machine_dict.get('remote_machine_root_path', None)
@@ -76,23 +76,17 @@ class RsyncPath(object):
         else:
             logging.info("Note: Logging has been disabled.")
 
-        self.transfer_direction = transfer_direction if transfer_direction else None
+        if transfer_direction:
+            self.transfer_direction = transfer_direction
+        else:
+            self.transfer_direction = TransferDirection.TransferDirection.ERROR
 
-        if not self.transfer_direction:
-            # Attempt to automatically determine the transfer direction:
-            self.transfer_direction = TransferDirection.determine_transfer_direction(self.local_machine_ip_list,
-                                                                                     self.remote_machine_ip_list)
-            if self.transfer_direction == TransferDirection.TransferDirection.ERROR:
-                raise RuntimeError("Error: Cannot determine Transfer Direction.")
+        self.is_rsync_data_invalid()
 
-        if self.is_invalid_object():
-            raise Exception("Error: Object cannot contain a value of None.")
-
-        if TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-            passed_machine_list = self.remote_machine_ip_list
+        passed_machine_list = self.remote_machine_ip_list
+        if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             passed_username = self.remote_username
         else:
-            passed_machine_list = self.local_machine_ip_list
             passed_username = self.local_username
 
         if passed_username is None:
@@ -113,63 +107,62 @@ class RsyncPath(object):
         # If we are copying from remote to local, remote has to be defined this way:
         # Check the remote dict is valid:
 
+        if self.transfer_direction == TransferDirection.TransferDirection.ERROR:
+            # Attempt to automatically determine the transfer direction:
+            self.transfer_direction = TransferDirection.determine_transfer_direction(self.local_machine_ip_list,
+                                                                                     self.remote_machine_ip_list)
+            if self.transfer_direction == TransferDirection.TransferDirection.ERROR:
+                raise RuntimeError("Error: Cannot determine Transfer Direction.")
+
         if self.enable_copy_threshold is True:
             if int(self.subdir_copy_threshold) not in range(MIN_SUBDIRECTORY_THRESHOLD, MAX_SUBDIRECTORY_THRESHOLD):
                 raise Exception(f"Error: {self.subdir_copy_threshold} is outside the valid threshold of "
                                 f"[{MIN_SUBDIRECTORY_THRESHOLD}, {MAX_SUBDIRECTORY_THRESHOLD - 1}]")
 
+
+
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-            source_machine_ip_list = self.remote_machine_ip_list
+            machine_ip_list = self.remote_machine_ip_list
             source_machine_root_path = self.remote_machine_root_path
             source_machine_directory_list = self.remote_machine_directory_list
             source_username = self.remote_username
             dest_machine_root_path = self.local_machine_root_path
+            machine_name = "Remote"
         else:
-            source_machine_ip_list = self.local_machine_ip_list
+            machine_ip_list = self.remote_machine_ip_list
             source_machine_root_path = self.local_machine_root_path
             source_machine_directory_list = self.local_machine_directory_list
             source_username = self.local_username
             dest_machine_root_path = self.remote_machine_root_path
+            machine_name = "Local"
 
+        # First, is the list of source ip machines at least one?
+        # Next, is the source root Path defined?
+        # Is there at least a single source directory in the source_directory_path_list?
+        # Is there a source_username or does the ip machine list contain a username that isn't empty?
+        # Does the destination_list have a local root path defined?
 
+        if len(machine_ip_list) < 1:
+            raise RuntimeError(f"Error: There should be at least a single {machine_name} IP in the list of Remote"
+                               " Machine IPs.")
 
-        if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
+        if source_machine_root_path is None:
+            raise RuntimeError(f"Error: The {machine_name} Machine Root Path should be defined.")
 
-            if len(self.remote_machine_ip_list) < 1:
-                raise RuntimeError("Error: There should be at least a single remote IP in the list of Remote Machine "
-                                   "IPs.")
+        if len(source_machine_directory_list) < 1:
+            raise RuntimeError(f"Error: There should be at least a single directory path in the list of {machine_name}"
+                               " Directory Path list.")
 
-            if self.remote_machine_root_path is None:
-                raise RuntimeError("Error: The Remote Machine Root Path should be defined.")
+        machine_list_contains_username = self.check_if_machine_list_contains_valid_key(machine_ip_list,
+                                                                                       "username")
 
-            if len(self.remote_machine_directory_list) < 1:
-                raise RuntimeError("Error: There should be at least a single directory path in the list of Remote "
-                                   "Directory Path list.")
+        if (source_username is None or len(source_username) == 0) and not machine_list_contains_username:
+            raise RuntimeError(f"Error: There should be a {machine_name} username defined as a variable or as a key"
+                               "in the Remote Machine IP List.")
 
-            machine_list_contains_username = self.check_if_machine_list_contains_valid_key(self.remote_machine_ip_list,
-                                                                                           "username")
-
-            if (self.remote_username is None or len(self.remote_username) == 0) and not machine_list_contains_username:
-                raise RuntimeError("Error: There should be a Remote Username defined as a variable or as a key in the "
-                                   "Remote Machine IP List.")
-
-            if self.local_machine_root_path is None:
-                raise RuntimeError("Error: There should be a Remote Username defined as a variable or as a key in the "
-                                   "Remote Machine IP List.")
-
-            # First, is the list of remote ip machines at least one?
-            # Next, is the remote root Path defined?
-            # Is there at least a single remote directory in the directory_path_list
-            # Is there a remote username or does the ip machine list contain a username that isn't empty?
-            # Does the local list have a local root path defined?
-            pass
-        else: # if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-            # First, is the list of local ip machines at least one?
-            # Next, is the local root Path defined?
-            # Is there at least a single local directory in the directory_path_list
-            # Is there a local username or does the ip machine list contain a username that isn't empty?
-            # Does the remote list have a local root path defined?
-            pass
+        if dest_machine_root_path is None:
+            raise RuntimeError(f"Error: There should be a {machine_name} Username defined as a variable or as a key"
+                               " in the Remote Machine IP List.")
 
     def __rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """Copy local directories to a remote path OR Copy remote directories to a local path"""
@@ -185,12 +178,12 @@ class RsyncPath(object):
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             # Make sure that destination path exists:
             self.ssh_client.create_local_root_directory(self.remote_machine_directory_list)
-            copying_directory_list = self.remote_machine_directory_list
+            source_directory_list = self.remote_machine_directory_list
             dest_machine_root_path = self.local_machine_root_path
             source_machine_root_path = self.remote_machine_root_path
         else:  # if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_LOCAL_TO_REMOTE:
             self.ssh_client.create_remote_root_directory(self.remote_machine_directory_list)
-            copying_directory_list = self.local_machine_directory_list
+            source_directory_list = self.local_machine_directory_list
             source_machine_root_path = self.local_machine_root_path
             dest_machine_root_path = self.remote_machine_root_path
 
@@ -199,27 +192,20 @@ class RsyncPath(object):
         # self.destination_ip_path.mkdir(exist_ok=True)
 
         # What list are we using here?
-        for path in copying_directory_list:
+        for path in source_directory_list:
             source_path = source_machine_root_path / path
 
-            # I now realize that this doesn't work the way I think it does.
-            # In fact, this doesn't even work since you can't check it using destination_path though SSH.
-            # TODO: Create an SSH Client that does this confirmation and size check so that this can work with
-            # both Windows and Linux/Posix.
-            # destination_path = Path(self.remote_machine_directory_list / path)
             destination_path = Path(dest_machine_root_path / path)
-
-            full_source_path = f"\"{source_path}\""
-            full_dest_path = f"{str(self.remote_username)}@{str(self.remote_machine_ip_list)}:\"{str(self.remote_machine_directory_list)}\""
 
             if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
                 full_source_path = f"{str(username)}@{str(hostname)}:\"{source_path}\""
                 full_dest_path = f"\"{dest_machine_root_path}\""
-                does_dest_path_exist = self.ssh_client.does_remote_directory_exist(destination_path)
+                does_dest_path_exist = self.ssh_client.does_local_directory_exist(destination_path)
+
             else:  # if self.transfer_direction == TransferDirection.COPY_FROM_LOCAL_TO_REMOTE:
                 full_source_path = f"\"{source_path}\""
                 full_dest_path = f"{str(username)}@{str(hostname)}:\"{destination_path}\""
-                does_dest_path_exist = self.ssh_client.does_local_directory_exist(destination_path)
+                does_dest_path_exist = self.ssh_client.does_remote_directory_exist(destination_path)
 
             rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_dest_path}"
 
@@ -262,13 +248,6 @@ class RsyncPath(object):
         """
         logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold_percentage = self.subdir_copy_threshold / 100
-
-        # if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-        #    minimum_local_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(dest_dir)
-        #    destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(source_dir)
-        # else:
-        #    minimum_local_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(source_dir)
-        #    destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(dest_dir)
 
         minimum_local_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(source_dir)
         destination_directory_size = self.ssh_client.get_remote_directory_size_in_bytes(dest_dir)
