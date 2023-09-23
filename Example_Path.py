@@ -18,7 +18,7 @@ import logging
 
 def run_rsync_path_from_local_to_remote(parameter_argument_dict):
     """Create a RsyncPath object and run it."""
-    # If we are copying from a list of local_machines to a single remote machine, do the following:
+    # If we are copying from a local_machine to a list of remote machines, do the following:
     # Because we are copying from a list of local machines to a single remote machines,
     # Define the transfer direction like so:
     transfer_direction = TransferDirection.COPY_FROM_LOCAL_TO_REMOTE
@@ -29,10 +29,7 @@ def run_rsync_path_from_local_to_remote(parameter_argument_dict):
     # If you do so, set the local_user variable to None.
 
     local_username = "USERNAME"
-    local_machine_ip_list = [
-        {"username": "USERNAME", "hostname": "LOCAL_IP", "os_type": OSType.UNKNOWN}
-    ]
-
+    local_machine_ip_list = None
     # Next, define the list of possible directories on the local machines to copy over the local machine:
     # This is done by defining a root path and list of possible directories in that path:
     local_machine_root_path = Path(Path.home().root)
@@ -40,9 +37,12 @@ def run_rsync_path_from_local_to_remote(parameter_argument_dict):
         "Place-your-Directories-Here"
     ]
 
-    # Next, define your remote machine:
+    # Next, define your remote machines:
     remote_username = "REMOTE_USERNAME"
-    remote_machine_ip_list = None
+    remote_machine_ip_list = [
+        {"username": "USERNAME", "hostname": "REMOTE_IP", "os_type": OSType.UNKNOWN}
+    ]
+
     remote_machine_root_path = Path.home() / "Set-Your-Remote-Directory-Here"
     # We don't need a list of ip list or directory lists:
     remote_machine_directory_list = None
@@ -61,18 +61,18 @@ def run_rsync_path_from_local_to_remote(parameter_argument_dict):
     DEBUG_MODE = parameter_argument_dict['debug_mode']
 
     # Next, pack everything up into local and remote dictionaries:
-    local_dict = {
-        "local_username": local_username,
-        "local_machine_ip_list": local_machine_ip_list,
-        "local_machine_root_path": local_machine_root_path,
-        "local_machine_directory_list": local_machine_directory_list,
+    source_dict = {
+        "source_username": local_username,
+        "source_machine_ip_list": local_machine_ip_list,
+        "source_machine_root_path": local_machine_root_path,
+        "source_machine_directory_list": local_machine_directory_list,
     }
 
-    remote_dict = {
-        "remote_username": remote_username if remote_username else None,
-        "remote_machine_ip_list": remote_machine_ip_list,
-        "remote_machine_root_path:": remote_machine_root_path,
-        "remote_machine_directory_list": remote_machine_directory_list
+    destination_dict = {
+        "destination_username": remote_username if remote_username else None,
+        "destination_machine_ip_list": remote_machine_ip_list,
+        "destination_machine_root_path:": remote_machine_root_path,
+        "destination_machine_directory_list": remote_machine_directory_list
     }
 
     threshold_dict = {
@@ -83,16 +83,16 @@ def run_rsync_path_from_local_to_remote(parameter_argument_dict):
     # Now show the following log statements:
     if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         total_dict = {}
-        total_dict.update(local_dict)
-        total_dict.update(remote_dict)
+        total_dict.update(source_dict)
+        total_dict.update(destination_dict)
 
         for key, value in total_dict.items():
             key_label = key.replace("_", " ").title()
             logging.debug(f"{key_label}: {value}")
 
     # And now, create and run the RsyncPath object:
-    nameless_path = RsyncPath(local_dict,
-                              remote_dict,
+    nameless_path = RsyncPath(source_dict,
+                              destination_dict,
                               threshold_dict,
                               transfer_direction,
                               DEBUG_MODE)
@@ -147,18 +147,18 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
     DEBUG_MODE = parameter_argument_dict['debug_mode']
 
     # Next, pack everything up into local and remote dictionaries:
-    local_dict = {
-        "local_username": local_username,
-        "local_machine_ip_list": local_machine_ip_list,
-        "local_machine_root_path": local_machine_root_path,
-        "local_machine_directory_list": local_machine_directory_list,
+    source_dict = {
+        "source_username": remote_username if remote_username else None,
+        "source_machine_ip_list": remote_machine_ip_list,
+        "source_machine_root_path": remote_machine_root_path,
+        "source_machine_directory_list": remote_machine_directory_list
     }
 
-    remote_dict = {
-        "remote_username": remote_username if remote_username else None,
-        "remote_machine_ip_list": remote_machine_ip_list,
-        "remote_machine_root_path": remote_machine_root_path,
-        "remote_machine_directory_list": remote_machine_directory_list
+    destination_dict = {
+        "destination_username": local_username,
+        "destination_machine_ip_list": local_machine_ip_list,
+        "destination_machine_root_path": local_machine_root_path,
+        "destination_machine_directory_list": local_machine_directory_list,
     }
 
     threshold_dict = {
@@ -169,8 +169,8 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
     # Now show the following log statements:
     if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         total_dict = {}
-        total_dict.update(local_dict)
-        total_dict.update(remote_dict)
+        total_dict.update(source_dict)
+        total_dict.update(destination_dict)
 
         for key, value in total_dict.items():
             key_label = key.replace("_", " ").title()
@@ -178,8 +178,8 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
 
     # And now, create and run the RsyncPath object:
 
-    nameless_path = RsyncPath(local_dict,
-                              remote_dict,
+    nameless_path = RsyncPath(source_dict,
+                              destination_dict,
                               threshold_dict,
                               transfer_direction,
                               DEBUG_MODE)
