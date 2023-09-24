@@ -178,7 +178,7 @@ class RsyncPath(object):
         # What list are we using here?
         for path in self.source_machine_directory_list:
             source_path = self.source_machine_root_path / path
-            destination_path = Path(self.destination_machine_root_path / path)
+            destination_path = self.destination_machine_root_path
 
             if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
                 full_source_path = f"{str(username)}@{str(hostname)}:\"{source_path}\""

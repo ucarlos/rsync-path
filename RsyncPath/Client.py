@@ -36,7 +36,6 @@ def can_connect_to_remote_machine(ip_address: str, remote_os_type: OSType):
               "unsupported OS Type.")
         return False
 
-
     argument = "-n" if remote_os_type == OSType.WINDOWS else "-c"
     command = f"ping {argument} 1 {ip_address}"
     command_list = split(command)
@@ -223,8 +222,6 @@ class Client(object):
             return False
 
         # TODO: Handle SSH Exceptions gracefully (Test this by running sudo shutdown "+3" on the remote machine)
-
-
 
         # Now return the result.
         debug(f"Client.create_root_remote_directory(): Created remote directory {str(directory_path)}")
