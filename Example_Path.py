@@ -163,7 +163,7 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
 
     threshold_dict = {
         "enable_copy_threshold": enable_copy_threshold,
-        "minimum_copy_threshold": copy_threshold_limit
+        "copy_threshold_limit": copy_threshold_limit
     }
 
     # Now show the following log statements:

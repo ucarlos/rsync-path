@@ -6,10 +6,9 @@
 # -------------------------------------------------------------------------------
 
 from fabric import Connection, Result
-from paramiko.ssh_exception import SSHException
 from invoke.exceptions import UnexpectedExit
 from subprocess import run, DEVNULL
-from pathlib import Path, PureWindowsPath, WindowsPath
+from pathlib import Path, PureWindowsPath
 from shlex import split
 
 from .OSType import OSType
@@ -125,7 +124,7 @@ class Client(object):
 
         command = ""
         if self.remote_os_type == OSType.POSIX:
-            command = f"du -sLb {str(directory_path)}"
+            command = f"du -sLb \"{str(directory_path)}\""
         else:
             pass
 
@@ -166,7 +165,7 @@ class Client(object):
 
         command = ""
         if self.remote_os_type == OSType.POSIX:
-            command = f"test -d {str(directory_path)}"
+            command = f"test -d \"{str(directory_path)}\""
         else:
             # Format the result for windows: NOT TESTED YET.
             windows_path = PureWindowsPath(directory_path)
@@ -195,6 +194,7 @@ class Client(object):
         return result_code is not None and result_code == 0
 
     def does_local_directory_exist(self, directory_path: Path):
+        """Check if the local directory exists."""
         return directory_path.exists()
 
     def create_remote_root_directory(self, directory_path):
@@ -206,7 +206,7 @@ class Client(object):
 
         command = ""
         if self.remote_os_type == OSType.POSIX:
-            command = f"mkdir -p {str(directory_path)}"
+            command = f"mkdir -p \"{str(directory_path)}\""
         else:
             pass
 
