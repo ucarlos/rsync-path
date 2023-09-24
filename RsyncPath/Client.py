@@ -24,7 +24,7 @@ def can_connect_to_remote_machine(ip_address: str, remote_os_type: OSType):
     :param: ip_address
     :returns True if the remote address responds to the ping request. False otherwise.
     """
-    info("Client.can_connect_to_remote_machine(): Starting ping call.")
+    debug("Client.can_connect_to_remote_machine(): Starting ping call.")
     if ip_address is None or len(ip_address) == 0:
         error(f"Client.can_connect_to_remote_machine(): Cannot make a connection to {ip_address} using an "
               "username that is empty or None.")

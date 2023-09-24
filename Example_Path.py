@@ -136,7 +136,7 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
     # Now, define the threshold percentage. This defines the minimum directory size percentage that the remote
     # directory should be before it is copied over to the local directory.
     # For example, if a local directory is 100 MiB, and we have a threshold value of 85, the remote directory
-    # needs to be at least 85 MiB before it is copied over. This to prevent accidential deletion in cases where
+    # needs to be at least 85 MiB before it is copied over. This to prevent accidental deletion in cases where
     # the remote directory was deleted, or the script ran on a remote machine that was freshly installed, etc.
 
     # In order to use the threshold value, you'll need to enable it. Otherwise, it will behave like normal rsync:

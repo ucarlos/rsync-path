@@ -159,7 +159,7 @@ class RsyncPath(object):
 
     def __rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """Copy local directories to a remote path OR Copy remote directories to a local path"""
-        logging.info("self.rsync_directories(): Starting Rsync.")
+        logging.debug("self.rsync_directories(): Starting Rsync.")
 
         dry_run_string = "--dry-run" if DEBUG_MODE else ""
 
@@ -210,10 +210,10 @@ class RsyncPath(object):
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
-                    print(f"Warning: Cannot move {str(path)} to {str(destination_sub_path)} Since it is not at least "
-                          f"{str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
+                    logging.info(f"Warning: Cannot move {str(path)} to {str(destination_sub_path)} Since it is "
+                                 f"not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
-                    print(f"{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M) ")
+                    logging.info("{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                     logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
                     logging.debug(f"Split command: {split(rsync_command)}")
                     if not TEST_RUN:
@@ -235,7 +235,7 @@ class RsyncPath(object):
         """Determine if the contents of the temp directory is empty or smaller than the threshold defined in
         subdir_copy_threshold.
         """
-        logging.info(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
+        logging.debug(f"self.verify_directory(): Verifying {str(source_dir)} and {str(dest_dir)}")
         threshold_percentage = self.subdir_copy_threshold / 100
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             minimum_source_size = threshold_percentage * self.ssh_client.get_local_directory_size_in_bytes(dest_dir)
