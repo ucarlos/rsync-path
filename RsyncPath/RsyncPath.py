@@ -213,7 +213,9 @@ class RsyncPath(object):
                     logging.info(f"Warning: Cannot move {str(path)} to {str(destination_sub_path)} Since it is "
                                  f"not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
-                    logging.info("{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
+                    logging.info(f"{str(path)} is at least {str(mb_backup_size)}M " 
+                                 f"(Source Size is {str(mb_temp_size)}M)")
+
                     logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
                     logging.debug(f"Split command: {split(rsync_command)}")
                     if not TEST_RUN:
