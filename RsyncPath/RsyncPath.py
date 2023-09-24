@@ -84,11 +84,12 @@ class RsyncPath(object):
 
         self.is_rsync_data_invalid()
 
-        passed_machine_list = self.destination_machine_ip_list
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             passed_username = self.destination_username
+            passed_machine_list = self.source_machine_ip_list
         else:
             passed_username = self.source_username
+            passed_machine_list = self.destination_machine_ip_list
 
         if passed_username is None:
             self.ssh_client = Client.create_instance_from_available_hostnames(passed_machine_list)
@@ -123,8 +124,10 @@ class RsyncPath(object):
 
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
             machine_name = "Remote"
+            remote_machine_ip_list = self.source_machine_ip_list
         else:
             machine_name = "Local"
+            remote_machine_ip_list = self.destination_machine_ip_list
 
         # First, is the list of source ip machines at least one?
         # Next, is the source root Path defined?
@@ -132,7 +135,7 @@ class RsyncPath(object):
         # Is there a source_username or does the ip machine list contain a username that isn't empty?
         # Does the destination_list have a local root path defined?
 
-        if len(self.destination_machine_ip_list) < 1:
+        if len(remote_machine_ip_list) < 1:
             raise RuntimeError(f"Error: There should be at least a single {machine_name} IP in the list of Remote"
                                " Machine IPs.")
 
@@ -143,7 +146,7 @@ class RsyncPath(object):
             raise RuntimeError(f"Error: There should be at least a single directory path in the list of {machine_name}"
                                " Directory Path list.")
 
-        machine_list_contains_username = self.check_if_machine_list_contains_valid_key(self.destination_machine_ip_list,
+        machine_list_contains_username = self.check_if_machine_list_contains_valid_key(remote_machine_ip_list,
                                                                                        "username")
 
         if (self.source_username is None or len(self.source_username) == 0) and not machine_list_contains_username:
@@ -178,33 +181,36 @@ class RsyncPath(object):
         # What list are we using here?
         for path in self.source_machine_directory_list:
             source_path = self.source_machine_root_path / path
-            destination_path = self.destination_machine_root_path
+            destination_root_path = self.destination_machine_root_path
+            destination_sub_path = destination_root_path / path
 
             if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
                 full_source_path = f"{str(username)}@{str(hostname)}:\"{source_path}\""
                 full_dest_path = f"\"{self.destination_machine_root_path}\""
-                does_dest_path_exist = self.ssh_client.does_local_directory_exist(destination_path)
+                does_dest_sub_path_exist = self.ssh_client.does_local_directory_exist(destination_sub_path)
 
             else:  # if self.transfer_direction == TransferDirection.COPY_FROM_LOCAL_TO_REMOTE:
                 full_source_path = f"\"{source_path}\""
-                full_dest_path = f"{str(username)}@{str(hostname)}:\"{destination_path}\""
-                does_dest_path_exist = self.ssh_client.does_remote_directory_exist(destination_path)
+                full_dest_path = f"{str(username)}@{str(hostname)}:\"{destination_root_path}\""
+                does_dest_sub_path_exist = self.ssh_client.does_remote_directory_exist(destination_sub_path)
 
             rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_dest_path}"
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.
-            if (not does_dest_path_exist) or not self.enable_copy_threshold:
+            if (not does_dest_sub_path_exist) or not self.enable_copy_threshold:
                 logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
                 if not TEST_RUN:
                     subprocess.run(split(rsync_command))
             else:
                 # Compare source and destination directories
-                check, backup_size, temp_size = self.verify_directory(source_path, destination_path, self.debug_mode)
+                check, backup_size, temp_size = self.verify_directory(source_path,
+                                                                      destination_sub_path,
+                                                                      self.debug_mode)
                 mb_temp_size = round((temp_size / (1 << 20)), 3)
                 mb_backup_size = round((backup_size / (1 << 20)), 3)
                 if not check:
-                    print(f"Warning: Cannot move {str(path)} to {str(destination_path)} Since it is not at least "
+                    print(f"Warning: Cannot move {str(path)} to {str(destination_sub_path)} Since it is not at least "
                           f"{str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
                     print(f"{str(path)} is at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M) ")
