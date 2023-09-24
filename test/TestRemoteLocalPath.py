@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -------------------------------------------------------------------------------
-# Created by Ulysses Carlos on 09/22/2023 at 10:39 PM
+# Created by Ulysses Carlos on 09/24/2023 at 12:31 PM
 #
-# TestPath.py
+# TestRemoteLocalPath.py
 #
 # -------------------------------------------------------------------------------
+
 from pathlib import Path
 from RsyncPath.RsyncPath import RsyncPath
 from RsyncPath.OSType import OSType
@@ -13,45 +14,40 @@ import argparse
 import logging
 
 
-def run_rsync_path_from_local_to_remote(parameter_argument_dict):
+def run_rsync_path_from_remote_to_local(parameter_argument_dict):
     """Create a RsyncPath object and run it."""
-    # If we are copying from a list of local_machines to a single remote machine, do the following:
-    # Because we are copying from a list of local machines to a single remote machines,
+    # If we are copying from a list of remote machines to a single local machine, do the following:
+    # Because we are copying from a list of remote machines to a single local machine,
     # Define the transfer direction like so:
-    transfer_direction = TransferDirection.COPY_FROM_LOCAL_TO_REMOTE
+    transfer_direction = TransferDirection.COPY_FROM_REMOTE_TO_LOCAL
 
-    # Next, set your list of local_machines:
-    # You can either define a specific local user to use for all the local machines,
-    # or place the username in the local_machine_ip_dict.
-    # If you do so, set the local_user variable to None.
+    # Next, set your list of remote_machines:
+    # You can either define a specific remote user to use for all the remote machines,
+    # or place the username in the remote_machine_ip_dict.
+    # If you do so, set the remote_user variable to None.
 
-    local_username = "local_username"
-    local_machine_ip_list = None
+    remote_username = "remote_username"
+    remote_machine_ip_list = [
+        {"username": "remote_username", "hostname": "192.168.1.71", "os_type": OSType.POSIX}
+    ]
 
-    # Next, define the list of possible directories on the local machines to copy over the local machine:
+    # Next, define the list of possible directories on the remote machines to copy over the local machine:
     # This is done by defining a root path and list of possible directories in that path:
-    local_machine_root_path = Path.home() / "Pictures"
-    local_machine_directory_list = [
+    remote_machine_root_path = Path(Path.home().root)
+    remote_machine_directory_list = [
         "Laser"
     ]
 
-    # Next, define your remote machine:
-    remote_username = "remote_username"
-    remote_machine_ip_list = None
-    remote_machine_root_path = Path.home() / "Pictures"
-
-    # You can either define a specific remote user to use for all the remote machines,
-    # or place the username in the local_machine_ip_dict.
-    # If you do so, set the local_user variable to None.
-    remote_machine_directory_list = None
-    remote_machine_ip_list = [
-        {"username": "remote_username", "hostname": "192.168.1.92", "os_type": OSType.POSIX}
-    ]
+    # Next, define your local machine:
+    local_username = "local_username"
+    local_machine_ip_list = None
+    local_machine_root_path = Path.home() / "Pictures"
+    local_machine_directory_list = None
 
     # Now, define the threshold percentage. This defines the minimum directory size percentage that the remote
     # directory should be before it is copied over to the local directory.
     # For example, if a local directory is 100 MiB, and we have a threshold value of 85, the remote directory
-    # needs to be at least 85 MiB before it is copied over. This to prevent accidental deletion in cases where
+    # needs to be at least 85 MiB before it is copied over. This to prevent accidential deletion in cases where
     # the remote directory was deleted, or the script ran on a remote machine that was freshly installed, etc.
 
     # In order to use the threshold value, you'll need to enable it. Otherwise, it will behave like normal rsync:
@@ -59,26 +55,26 @@ def run_rsync_path_from_local_to_remote(parameter_argument_dict):
     copy_threshold_limit = 85.0
 
     # Next, define whether we're using DEBUG MODE or NOT:
-    DEBUG_MODE = parameter_argument_dict['debug_mode']
+    DEBUG_MODE = True
 
     # Next, pack everything up into local and remote dictionaries:
     source_dict = {
-        "source_username": local_username,
-        "source_machine_ip_list": local_machine_ip_list,
-        "source_machine_root_path": local_machine_root_path,
-        "source_machine_directory_list": local_machine_directory_list,
+        "source_username": remote_username if remote_username else None,
+        "source_machine_ip_list": remote_machine_ip_list,
+        "source_machine_root_path": remote_machine_root_path,
+        "source_machine_directory_list": remote_machine_directory_list
     }
 
     destination_dict = {
-        "destination_username": remote_username if remote_username else None,
-        "destination_machine_ip_list": remote_machine_ip_list,
-        "destination_machine_root_path": remote_machine_root_path,
-        "destination_machine_directory_list": remote_machine_directory_list
+        "destination_username": local_username,
+        "destination_machine_ip_list": local_machine_ip_list,
+        "destination_machine_root_path": local_machine_root_path,
+        "destination_machine_directory_list": local_machine_directory_list,
     }
 
     threshold_dict = {
         "enable_copy_threshold": enable_copy_threshold,
-        "copy_threshold_limit": copy_threshold_limit
+        "minimum_copy_threshold": copy_threshold_limit
     }
 
     # Now show the following log statements:
@@ -92,6 +88,7 @@ def run_rsync_path_from_local_to_remote(parameter_argument_dict):
             logging.debug(f"{key_label}: {value}")
 
     # And now, create and run the RsyncPath object:
+
     nameless_path = RsyncPath(source_dict,
                               destination_dict,
                               threshold_dict,
@@ -112,12 +109,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     argument_dict = {'dry_run': args.dry_run, 'debug_mode': args.debug_mode}
-
-    if argument_dict['debug_mode']:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # Depending on the Transfer direction, either run the RsyncPath from remote to local
     # or from local to remote:
-    run_rsync_path_from_local_to_remote(argument_dict)
+    run_rsync_path_from_remote_to_local(argument_dict)
