@@ -157,7 +157,7 @@ class RsyncPath(object):
 
         if self.destination_machine_root_path is None:
             raise RuntimeError(f"There should be a {remote_machine_name} Username defined as a variable or as "
-                               f"a key in the {source_machine_name} Machine IP List.")
+                               f"a key in the {remote_machine_name} Machine IP List.")
 
     def __rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """Copy local directories to a remote path OR Copy remote directories to a local path"""
