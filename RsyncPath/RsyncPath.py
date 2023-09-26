@@ -123,10 +123,12 @@ class RsyncPath(object):
                                 f"[{MIN_SUBDIRECTORY_THRESHOLD}, {MAX_SUBDIRECTORY_THRESHOLD - 1}]")
 
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-            machine_name = "Remote"
+            source_machine_name = "Remote"
+            remote_machine_name = "Local"
             remote_machine_ip_list = self.source_machine_ip_list
         else:
-            machine_name = "Local"
+            source_machine_name = "Local"
+            remote_machine_name = "Remote"
             remote_machine_ip_list = self.destination_machine_ip_list
 
         # First, is the list of source ip machines at least one?
@@ -136,26 +138,26 @@ class RsyncPath(object):
         # Does the destination_list have a local root path defined?
 
         if len(remote_machine_ip_list) < 1:
-            raise RuntimeError(f"Error: There should be at least a single {machine_name} IP in the list of Remote"
-                               " Machine IPs.")
+            raise RuntimeError(f"There should be at least a single {source_machine_name} IP "
+                               f" in the list of {source_machine_name} Machine IPs.")
 
         if self.source_machine_root_path is None:
-            raise RuntimeError(f"Error: The {machine_name} Machine Root Path should be defined.")
+            raise RuntimeError(f"The {source_machine_name} Machine Root Path should be defined.")
 
         if len(self.source_machine_directory_list) < 1:
-            raise RuntimeError(f"Error: There should be at least a single directory path in the list of {machine_name}"
-                               " Directory Path list.")
+            raise RuntimeError(f"There should be at least a single directory path in the list of "
+                               f"{source_machine_name} Directory Path list.")
 
         machine_list_contains_username = self.check_if_machine_list_contains_valid_key(remote_machine_ip_list,
                                                                                        "username")
 
         if (self.source_username is None or len(self.source_username) == 0) and not machine_list_contains_username:
-            raise RuntimeError(f"Error: There should be a {machine_name} username defined as a variable or as a key"
-                               "in the Remote Machine IP List.")
+            raise RuntimeError(f"There should be a {source_machine_name} username defined as a variable or as "
+                               f"a key in the {source_machine_name} Machine IP List.")
 
         if self.destination_machine_root_path is None:
-            raise RuntimeError(f"Error: There should be a {machine_name} Username defined as a variable or as a key"
-                               " in the Remote Machine IP List.")
+            raise RuntimeError(f"There should be a {remote_machine_name} Username defined as a variable or as "
+                               f"a key in the {source_machine_name} Machine IP List.")
 
     def __rsync_directories(self, DEBUG_MODE=False, TEST_RUN=False):
         """Copy local directories to a remote path OR Copy remote directories to a local path"""
