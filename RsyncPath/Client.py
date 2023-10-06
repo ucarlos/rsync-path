@@ -11,7 +11,7 @@ from subprocess import run, DEVNULL
 from pathlib import Path, PureWindowsPath
 from shlex import split
 
-from .OSType import OSType
+from RsyncPath.OSType import OSType
 from logging import debug, error
 
 DEFAULT_SSH_PORT = 22

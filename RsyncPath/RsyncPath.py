@@ -6,8 +6,8 @@
 # ip address to destination ip with a specified path.
 # ------------------------------------------------------------------------------
 
-from . import Client
-from . import TransferDirection
+from RsyncPath.Client import Client
+from RsyncPath.TransferDirection import TransferDirection
 from pathlib import Path
 from shlex import split
 import logging
