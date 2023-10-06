@@ -85,10 +85,10 @@ class RsyncPath(object):
         self.is_rsync_data_invalid()
 
         if self.transfer_direction == TransferDirection.TransferDirection.COPY_FROM_REMOTE_TO_LOCAL:
-            passed_username = self.destination_username
+            passed_username = self.source_username
             passed_machine_list = self.source_machine_ip_list
         else:
-            passed_username = self.source_username
+            passed_username = self.destination_username
             passed_machine_list = self.destination_machine_ip_list
 
         if passed_username is None:
