@@ -52,13 +52,15 @@ def create_instance_from_available_hostnames(hostname_list: list[dict]):
         hostname = hostname_dict.get("hostname", "")
         os_type = hostname_dict.get("os_type", "")
         username = hostname_dict.get("username", "")
-        debug(f"Checking if host {index} with address {hostname} is available:")
+        debug("Client.create_instance_from_available_hostnames(): "
+              f"Checking if host {index} with username {username}, address {hostname} and os_type {os_type} is "
+              f"available to connect:")
         if can_connect_to_remote_machine(hostname, os_type):
             return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
         index += 1
 
-    error_message = """Could not establish any connection to any remote machine on the IP List. Make sure that Please check your
-    internet connection and make sure that at least one of the remote machines is available."""
+    error_message = """Could not establish any connection to any remote machine on the IP List. Please 
+    check your internet connection and make sure that at least one of the remote machines is available."""
     raise RuntimeError(error_message)
 
 
@@ -74,7 +76,9 @@ def create_instance_from_username_and_available_hostnames(username: str, hostnam
     for hostname_dict in hostname_list:
         hostname = hostname_dict.get("hostname", "")
         os_type = hostname_dict.get("os_type", "")
-        debug(f"Checking if host {index} with address {hostname} is available:")
+        debug("Client.create_instance_from_username_and_available_hostnames(): "
+              f"Checking if host {index} with username {username}, address {hostname} and os_type {os_type} is "
+              f"available to connect:")
         if can_connect_to_remote_machine(hostname, os_type):
             return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
         index += 1
