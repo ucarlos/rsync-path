@@ -60,8 +60,10 @@ class RsyncPath(object):
 
         self.destination_machine_dict: dict = destination_dict
         self.destination_username: str = self.destination_machine_dict.get('destination_username', None)
-        self.destination_machine_ip_list: list[dict] = self.destination_machine_dict.get('destination_machine_ip_list', None)
-        self.destination_machine_root_path: Path = self.destination_machine_dict.get('destination_machine_root_path', None)
+        self.destination_machine_ip_list: list[dict] = self.destination_machine_dict.get('destination_machine_ip_list',
+                                                                                         None)
+        self.destination_machine_root_path: Path = self.destination_machine_dict.get('destination_machine_root_path',
+                                                                                     None)
         self.destination_machine_directory_list: list = self.destination_machine_dict.get(
             'destination_machine_directory_list',
             None
@@ -98,13 +100,13 @@ class RsyncPath(object):
                                                                                            passed_machine_list)
 
     def check_if_machine_list_contains_valid_key(self, machine_ip_list: list[dict], key_name):
+        """Check if the machine list contains a valid key name."""
         for machine_ip in machine_ip_list:
             if machine_ip[key_name] is None or len(machine_ip[key_name]) == 0:
                 return False
         return True
 
     def is_rsync_data_invalid(self):
-
         """Check if the passed local and remote data variables are valid."""
         # If we are copying from remote to local, remote has to be defined this way:
         # Check the remote dict is valid:
@@ -214,7 +216,7 @@ class RsyncPath(object):
                     logging.info(f"Warning: Cannot move {str(path)} to {str(destination_sub_path)} Since it is "
                                  f"not at least {str(mb_backup_size)}M (Source Size is {str(mb_temp_size)}M)")
                 else:
-                    logging.info(f"{str(path)} is at least {str(mb_backup_size)}M " 
+                    logging.info(f"{str(path)} is at least {str(mb_backup_size)}M "
                                  f"(Source Size is {str(mb_temp_size)}M)")
 
                     logging.debug(f"self.rsync_directories(): Preparing to call {rsync_command}")
