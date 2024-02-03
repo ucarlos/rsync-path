@@ -59,8 +59,8 @@ def create_instance_from_available_hostnames(hostname_list: list[dict]):
             return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
         index += 1
 
-    error_message = """Could not establish any connection to any remote machine on the IP List. Please 
-    check your internet connection and make sure that at least one of the remote machines is available."""
+    error_message = """Could not establish any connection to any remote machine on the IP List. Please
+     check your internet connection and make sure that at least one of the remote machines is available."""
     raise RuntimeError(error_message)
 
 
