@@ -179,7 +179,7 @@ class RsyncPath(object):
 
         hostname = self.ssh_client.hostname
         username = self.ssh_client.username
-        host_ssh_port = self.ssh_client.ssh_port
+        # self.destination_ip_path.mkdir(exist_ok=True)
 
         # What list are we using here?
         for path in self.source_machine_directory_list:
@@ -197,8 +197,7 @@ class RsyncPath(object):
                 full_dest_path = f"{str(username)}@{str(hostname)}:\"{destination_root_path}\""
                 does_dest_sub_path_exist = self.ssh_client.does_remote_directory_exist(destination_sub_path)
 
-            ssh_port_string = "" if host_ssh_port == Client.DEFAULT_SSH_PORT else f" -e \"ssh -p {host_ssh_port}\""
-            rsync_command = f"rsync -aLvzh {ssh_port_string} --delete {dry_run_string} --safe-links {full_source_path} {full_dest_path}"
+            rsync_command = f"rsync -aLvzh --delete {dry_run_string} --safe-links {full_source_path} {full_dest_path}"
 
             # Copy automatically if destination path does not exist
             # or Copy threshold is Disabled.

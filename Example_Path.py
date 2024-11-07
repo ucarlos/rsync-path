@@ -117,7 +117,7 @@ def run_rsync_path_from_remote_to_local(parameter_argument_dict):
 
     remote_username = "USERNAME"
     remote_machine_ip_list = [
-        {"username": "USERNAME", "hostname": "REMOTE_IP", "ssh_port": 22, "os_type": OSType.UNKNOWN}
+        {"username": "USERNAME", "hostname": "REMOTE_IP", "os_type": OSType.UNKNOWN}
     ]
 
     # Next, define the list of possible directories on the remote machines to copy over the local machine:

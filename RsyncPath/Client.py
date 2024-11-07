@@ -52,13 +52,11 @@ def create_instance_from_available_hostnames(hostname_list: list[dict]):
         hostname = hostname_dict.get("hostname", "")
         os_type = hostname_dict.get("os_type", "")
         username = hostname_dict.get("username", "")
-        host_ssh_port = hostname_dict.get("ssh_port", DEFAULT_SSH_PORT)
-
         debug("Client.create_instance_from_available_hostnames(): "
               f"Checking if host {index} with username {username}, address {hostname} and os_type {os_type} is "
               f"available to connect:")
         if can_connect_to_remote_machine(hostname, os_type):
-            return Client(username, hostname, host_ssh_port, os_type)
+            return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
         index += 1
 
     error_message = """Could not establish any connection to any remote machine on the IP List. Please
@@ -81,10 +79,8 @@ def create_instance_from_username_and_available_hostnames(username: str, hostnam
         debug("Client.create_instance_from_username_and_available_hostnames(): "
               f"Checking if host {index} with username {username}, address {hostname} and os_type {os_type} is "
               f"available to connect:")
-
-        host_ssh_port = hostname_dict.get("ssh_port", DEFAULT_SSH_PORT)
         if can_connect_to_remote_machine(hostname, os_type):
-            return Client(username, hostname, host_ssh_port, os_type)
+            return Client(username, hostname, DEFAULT_SSH_PORT, os_type)
         index += 1
 
     error_message = """Could not establish any connection to any remote machine on the IP List. Please check your
@@ -95,29 +91,29 @@ def create_instance_from_username_and_available_hostnames(username: str, hostnam
 class Client(object):
     """A simple Client class to execute specific commands on both your local and remote machines."""
 
-    def __init__(self, username, hostname, ssh_port=DEFAULT_SSH_PORT, remote_os_type=OSType.UNKNOWN):
+    def __init__(self, username, hostname, port=DEFAULT_SSH_PORT, remote_os_type=OSType.UNKNOWN):
         """Construct the Client Object."""
-        self.ssh_connection = Connection(host=hostname, user=username, port=ssh_port)
+        self.ssh_connection = Connection(host=hostname, user=username, port=port)
 
         self.username = username
         self.hostname = hostname
-        self.ssh_port = ssh_port
+        self.port = port
         # Not used currently, but
         self.local_os_type = OSType.get_os_type()
         self.remote_os_type = remote_os_type
         self.remote_shell_name = "/bin/bash" if self.remote_os_type == OSType.POSIX else "cmd.exe"
         self.local_shell_name = "/bin/bash" if self.local_os_type == OSType.POSIX else "cmd.exe"
 
-    def change_connection(self, username, hostname, ssh_port, os_type=None):
+    def change_connection(self, username, hostname, port, os_type=None):
         """Close the current SSH connection and create a new one using the passed username, hostname and port
         variables.
         """
         if self.ssh_connection.is_connected():
             self.ssh_connection.close()
-        self.ssh_connection = Connection(user=username, host=hostname, port=ssh_port)
+        self.ssh_connection = Connection(user=username, host=hostname, port=port)
         self.username = username
         self.hostname = hostname
-        self.ssh_port = ssh_port
+        self.port = port
         if os_type is not None:
             self.remote_os_type = os_type
 
